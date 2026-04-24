@@ -19,6 +19,7 @@ class Config:
     # MT5
     MT5_LOGIN = int(os.getenv("MT5_LOGIN") or 0)
     MT5_SERVER = os.getenv("MT5_SERVER", "")
+    MT5_PATH = os.getenv("MT5_PATH", "")
 
     # Discord
     DISCORD = {
