@@ -30,6 +30,7 @@ class Config:
         "account": os.getenv("DISCORD_WEBHOOK_ACCOUNT", ""),
         "alerts": os.getenv("DISCORD_WEBHOOK_ALERTS", ""),
         "divergence": os.getenv("DISCORD_WEBHOOK_DIVERGENCE", ""),
+        "experiments": os.getenv("DISCORD_WEBHOOK_EXPERIMENTS", ""),
     }
 
     # Email
