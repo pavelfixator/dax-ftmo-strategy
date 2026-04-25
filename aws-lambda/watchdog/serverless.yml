@@ -1,0 +1,62 @@
+# DAX FTMO bot — AWS Lambda Cloud Watchdog (Layer 4 close framework)
+# Deploy: serverless framework (npm i -g serverless)
+#         serverless deploy --aws-profile dax-ftmo
+#
+# NOT YET DEPLOYED — config only, deployment Day 13-14 (úkol #13).
+
+service: dax-ftmo-watchdog
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: eu-central-1
+  stage: prod
+  memorySize: 128
+  timeout: 30
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: "*"
+  environment:
+    BOT_STATUS_URL: ${env:BOT_STATUS_URL}
+    BOT_AUTH_TOKEN: ${env:BOT_AUTH_TOKEN}
+    DISCORD_EMERGENCY_WEBHOOK: ${env:DISCORD_EMERGENCY_WEBHOOK}
+    DISCORD_ALERTS_WEBHOOK: ${env:DISCORD_ALERTS_WEBHOOK}
+    TWILIO_ACCOUNT_SID: ${env:TWILIO_ACCOUNT_SID}
+    TWILIO_AUTH_TOKEN: ${env:TWILIO_AUTH_TOKEN}
+    TWILIO_FROM: ${env:TWILIO_FROM}
+    SMS_TO: ${env:SMS_TO}
+    SES_FROM: ${env:SES_FROM}
+    EMAIL_TO: ${env:EMAIL_TO}
+
+functions:
+  watchdog:
+    handler: handler.lambda_handler
+    description: "DAX FTMO bot watchdog — checks position close compliance"
+    events:
+      # CET 19:00-22:00 = UTC 17:00-20:00 (summer CEST = UTC+2)
+      # Cron: every 5 min, hour 17-20 UTC, Mon-Fri
+      - schedule:
+          rate: cron(*/5 17-20 ? * MON-FRI *)
+          enabled: true
+          name: dax-ftmo-watchdog-evening
+
+    # NOTE: For winter CET (UTC+1), update cron to hour 18-21 UTC
+    # OR use timezone-aware schedule (EventBridge supports per-rule TZ)
+    # OR check inside handler: if hour < 19 CET, skip
+
+package:
+  exclude:
+    - .git/**
+    - .gitignore
+    - README.md
+    - tests/**
+    - "*.pyc"
+    - __pycache__/**
+
+# IAM permissions added by Lambda automatically:
+# - logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents (for CloudWatch)
