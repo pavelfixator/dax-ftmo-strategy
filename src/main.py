@@ -2,6 +2,13 @@
 
 Spec: Blok 3 ÚKOL 7.2 (trading_loop pseudokód).
 Spouští se jako Windows Service nebo `python src/main.py` (foreground dev).
+
+Layered architecture (refactor 2026-04-26):
+  src.strategy.* — indicators, data feed, news, setup classes
+  src.risk.*     — risk manager, FTMO rules engine
+  src.execution.* — MT5 connector, executor, health check
+  src.journal.*  — Obsidian writer, pattern DB, shadow tracker, divergence
+  src.notifier.* — Discord webhook, email fallback
 """
 from __future__ import annotations
 
