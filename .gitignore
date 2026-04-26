@@ -11,10 +11,23 @@ __pycache__/
 venv/
 env/
 
-# Logs a data
+# Logs
 logs/
-data/
 *.log
+
+# Data — vse v data/ ignorovat, krome verzovaneho exp01 state
+# (poradi je dulezite: catch-all musi byt PRED ! exception)
+data/*
+!data/exp01_state.json
+
+# Explicit redundant safety net (kdyby nekdo zmenil pravidla nahore)
+data/historical/*
+data/dukascopy_cache/*
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
 
 # OS
 .DS_Store
