@@ -1,6 +1,7 @@
-"""2-hodinový status snapshot do Discord #alerts.
+"""2-hodinový status snapshot do Discord #system-health.
 
-Sbírá lehký health snapshot (žádné MT5 volání, žádné CDP) a postuje do #alerts.
+Sbírá lehký health snapshot (žádné MT5 volání, žádné CDP) a postuje do
+#system-health (default; --channel přepisuje, např. alerts pro debug).
 Cíl: víkendová viditelnost — Pavel vidí každé 2h, že robot framework + data
 pipeline + Exp01 orchestrator žijou.
 
@@ -113,8 +114,8 @@ def build_message() -> str:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--dry-run", action="store_true", help="print to stdout, do not post")
-    p.add_argument("--channel", default="alerts",
-                   help="Discord channel key (default: alerts)")
+    p.add_argument("--channel", default="system_health",
+                   help="Discord channel key (default: system_health)")
     a = p.parse_args()
 
     msg = build_message()

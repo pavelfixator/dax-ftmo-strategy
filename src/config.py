@@ -24,6 +24,8 @@ class Config:
     # Discord
     DISCORD = {
         "signaly": os.getenv("DISCORD_WEBHOOK_SIGNALY", ""),
+        "signals_b": os.getenv("DISCORD_WEBHOOK_SIGNALS_B", ""),
+        "trades": os.getenv("DISCORD_WEBHOOK_TRADES", ""),
         "journal": os.getenv("DISCORD_WEBHOOK_JOURNAL", ""),
         "backtest": os.getenv("DISCORD_WEBHOOK_BACKTEST", ""),
         "mistakes": os.getenv("DISCORD_WEBHOOK_MISTAKES", ""),
@@ -31,6 +33,8 @@ class Config:
         "alerts": os.getenv("DISCORD_WEBHOOK_ALERTS", ""),
         "divergence": os.getenv("DISCORD_WEBHOOK_DIVERGENCE", ""),
         "experiments": os.getenv("DISCORD_WEBHOOK_EXPERIMENTS", ""),
+        "emergency": os.getenv("DISCORD_WEBHOOK_EMERGENCY", ""),
+        "system_health": os.getenv("DISCORD_WEBHOOK_SYSTEM_HEALTH", ""),
     }
 
     # Email
