@@ -17,71 +17,71 @@ Metriky per (setup, week, config):
 
 ### Setup `orb_dax`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 0 | 0 | 0.00 | +0.0 |
-| drop_F2 | 0 | 0 | 0.00 | +0.0 |
-| drop_F3 | 4 | 4 | 0.00 | -31.8 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 13 | 13 | 0.00 | -36.4 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F2 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F3 | 4 | 4 | 0.00 | -31.8 | -127.2 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 13 | 13 | 0.00 | -36.4 | -473.7 |
 
 ### Setup `vwap_bounce`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 0 | 0 | 0.00 | +0.0 |
-| drop_F2 | 0 | 0 | 0.00 | +0.0 |
-| drop_F3 | 5 | 0 | 0.00 | +0.0 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 120 | 0 | 0.00 | +0.0 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F2 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F3 | 5 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 120 | 0 | 0.00 | +0.0 | +0.0 |
 
 ### Setup `us_momentum`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 5 | 5 | 0.00 | -23.7 |
-| drop_F2 | 12 | 12 | 0.92 | +10.3 |
-| drop_F3 | 0 | 0 | 0.00 | +0.0 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 54 | 54 | 0.43 | -11.8 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 5 | 5 | 0.00 | -23.7 | -118.4 |
+| drop_F2 | 12 | 12 | 0.92 | +10.3 | -2.5 |
+| drop_F3 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 54 | 54 | 0.43 | -11.8 | -664.1 |
 
 ## Week `peak_crash_black_monday_II` (crash)
 
 ### Setup `orb_dax`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 0 | 0 | 0.00 | +0.0 |
-| drop_F2 | 0 | 0 | 0.00 | +0.0 |
-| drop_F3 | 9 | 9 | 0.89 | +181.0 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 28 | 28 | 0.39 | +21.8 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F2 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F3 | 9 | 9 | 0.89 | +181.0 | -117.3 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 28 | 28 | 0.39 | +21.8 | -1118.0 |
 
 ### Setup `vwap_bounce`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 0 | 0 | 0.00 | +0.0 |
-| drop_F2 | 0 | 0 | 0.00 | +0.0 |
-| drop_F3 | 0 | 0 | 0.00 | +0.0 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 120 | 10 | 0.20 | -33.4 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F2 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F3 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 120 | 10 | 0.20 | -33.4 | -417.9 |
 
 ### Setup `us_momentum`
 
-| config | signals | trades | win_rate | avg_pnl_pts |
-|---|---:|---:|---:|---:|
-| baseline_F1234 | 0 | 0 | 0.00 | +0.0 |
-| drop_F1 | 36 | 36 | 0.33 | -9.8 |
-| drop_F2 | 12 | 12 | 0.08 | -108.7 |
-| drop_F3 | 0 | 0 | 0.00 | +0.0 |
-| drop_F4 | 0 | 0 | 0.00 | +0.0 |
-| all_off | 54 | 54 | 0.24 | -43.5 |
+| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |
+|---|---:|---:|---:|---:|---:|
+| baseline_F1234 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F1 | 36 | 36 | 0.33 | -9.8 | -3484.3 |
+| drop_F2 | 12 | 12 | 0.08 | -108.7 | -1304.4 |
+| drop_F3 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| drop_F4 | 0 | 0 | 0.00 | +0.0 | +0.0 |
+| all_off | 54 | 54 | 0.24 | -43.5 | -4788.7 |
 
 ## Diagnostika — který filter je BINDING
 

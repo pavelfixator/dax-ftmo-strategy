@@ -150,11 +150,24 @@ def run_one(name: str, setup_factory, week_label: str,
         # Skip ahead past this trade's exit for cleanliness — find next bar after exit
     win_rate = (wins / n_trades) if n_trades else 0.0
     avg_pnl_pts = (sum(pnls_pts) / len(pnls_pts)) if pnls_pts else 0.0
+    # Max drawdown in points across the chronological pnl sequence
+    max_dd_pts = 0.0
+    if pnls_pts:
+        cum = 0.0
+        peak = 0.0
+        for p in pnls_pts:
+            cum += p
+            if cum > peak:
+                peak = cum
+            dd = cum - peak
+            if dd < max_dd_pts:
+                max_dd_pts = dd
     return {
         "n_signals": n_signals,
         "n_trades": n_trades,
         "win_rate": round(win_rate, 3),
         "avg_pnl_pts": round(avg_pnl_pts, 2),
+        "max_dd_pts": round(max_dd_pts, 2),
         "pnls_pts": [round(p, 2) for p in pnls_pts],
     }
 
@@ -222,12 +235,13 @@ def _build_report(results: dict) -> str:
         for setup_name, configs in week_data["by_setup"].items():
             lines.append(f"### Setup `{setup_name}`")
             lines.append("")
-            lines.append("| config | signals | trades | win_rate | avg_pnl_pts |")
-            lines.append("|---|---:|---:|---:|---:|")
+            lines.append("| config | signals | trades | win_rate | avg_pnl_pts | max_dd_pts |")
+            lines.append("|---|---:|---:|---:|---:|---:|")
             for cfg_lbl, r in configs.items():
                 lines.append(
                     f"| {cfg_lbl} | {r['n_signals']} | {r['n_trades']} | "
-                    f"{r['win_rate']:.2f} | {r['avg_pnl_pts']:+.1f} |"
+                    f"{r['win_rate']:.2f} | {r['avg_pnl_pts']:+.1f} | "
+                    f"{r.get('max_dd_pts', 0):+.1f} |"
                 )
             lines.append("")
     lines += [
