@@ -203,7 +203,8 @@ class OrbDaxSetup(BaseSetup):
 
     def check_entry_at(self, session_5m: pd.DataFrame, daily_df: pd.DataFrame,
                        ts: pd.Timestamp,
-                       *, history_5m: Optional[pd.DataFrame] = None) -> Optional[Signal]:
+                       *, history_5m: Optional[pd.DataFrame] = None,
+                       skip_filters: Optional[set] = None) -> Optional[Signal]:
         """Vyhodnocení 1 baru.
 
         session_5m: bary aktuálního CET dne až po `ts` včetně.
@@ -211,7 +212,11 @@ class OrbDaxSetup(BaseSetup):
         ts:         timestamp aktuálně uzavřeného 5m baru (UTC).
         history_5m: širší 5m history pro F4 ATR baseline (≥20 dní). Pokud None,
                     F4 fallback = pass (raw spec: missing data ≠ block).
+        skip_filters: set z {"F1","F2","F3","F4"} — filtrů k vynechání pro
+                    ablation diagnostiku. Vynechaný filtr neblockuje entry,
+                    ale negarantuje směrový bias (pak používáme breakout side).
         """
+        skip = skip_filters or set()
         if ts not in session_5m.index:
             return None
         bar_cet_time = _to_cet_time(ts)
@@ -219,28 +224,45 @@ class OrbDaxSetup(BaseSetup):
             return None
         bars_up_to = session_5m.loc[:ts]
         orb = compute_orb(bars_up_to)
-        if orb is None:
+        if "F2" not in skip and orb is None:
             return None  # F2 fail
+        if orb is None:
+            # F2 skipped but no ORB context → can't compute breakout direction
+            return None
         today_date = _to_cet_date(ts)
-        bull, bear = daily_bias(daily_df, today_date)
-        if not (bull or bear):
-            return None  # F1 fail
+        if "F1" in skip:
+            bull = bear = False  # direction will come purely from breakout side
+            bias_known = False
+        else:
+            bull, bear = daily_bias(daily_df, today_date)
+            bias_known = True
+            if not (bull or bear):
+                return None  # F1 fail
         bar = bars_up_to.iloc[-1]
         close = float(bar["close"])
-        # Direction by breakout
-        if bull and close > orb.orb_high:
-            direction = "LONG"
-        elif bear and close < orb.orb_low:
-            direction = "SHORT"
+        # Direction
+        if bias_known:
+            if bull and close > orb.orb_high:
+                direction = "LONG"
+            elif bear and close < orb.orb_low:
+                direction = "SHORT"
+            else:
+                return None
         else:
-            return None
+            if close > orb.orb_high:
+                direction = "LONG"
+            elif close < orb.orb_low:
+                direction = "SHORT"
+            else:
+                return None
         # F3 Volume confirm
-        if float(bar["volume"]) < VOLUME_THRESHOLD * orb.orb_avg_volume:
-            return None
+        if "F3" not in skip:
+            if float(bar["volume"]) < VOLUME_THRESHOLD * orb.orb_avg_volume:
+                return None
         filters_total = 4 if self.filters == "A" else 3
-        filters_met = 3  # F1 + F2 + F3 confirmed
+        filters_met = 3  # F1 + F2 + F3 confirmed (subject to skips)
         # F4 only for filters="A"
-        if self.filters == "A":
+        if self.filters == "A" and "F4" not in skip:
             f4_pass = f4_atr_relative(history_5m, today_date) if history_5m is not None else None
             if f4_pass is False:
                 return None

@@ -187,7 +187,9 @@ class UsMomentumSetup(BaseSetup):
 
     def check_entry_at(self, df_5m: pd.DataFrame, daily_df: pd.DataFrame,
                        ts: pd.Timestamp, *,
-                       sp500_5m: Optional[pd.DataFrame] = None) -> Optional[Signal]:
+                       sp500_5m: Optional[pd.DataFrame] = None,
+                       skip_filters: Optional[set] = None) -> Optional[Signal]:
+        skip = skip_filters or set()
         if ts not in df_5m.index:
             return None
         cet_ts = _to_cet(ts)
@@ -196,45 +198,69 @@ class UsMomentumSetup(BaseSetup):
         if not (win_start <= cet_ts.time() < win_end):
             return None
         # F1 Daily Bias
-        bull, bear = daily_bias(daily_df, today)
-        if not (bull or bear):
-            return None
+        if "F1" in skip:
+            bull = bear = False
+            bias_known = False
+        else:
+            bull, bear = daily_bias(daily_df, today)
+            bias_known = True
+            if not (bull or bear):
+                return None
         # F2 Pre-US trend (15m HH/LL)
-        trend = pre_us_trend(df_5m, today)
-        if trend is None:
-            return None
-        if bull and trend != "UP":
-            return None
-        if bear and trend != "DOWN":
-            return None
-        direction = "LONG" if bull else "SHORT"
+        if "F2" in skip:
+            trend = None
+        else:
+            trend = pre_us_trend(df_5m, today)
+            if trend is None:
+                return None
+            if bias_known and bull and trend != "UP":
+                return None
+            if bias_known and bear and trend != "DOWN":
+                return None
+        # Direction
+        if bias_known:
+            direction = "LONG" if bull else "SHORT"
+        elif trend is not None:
+            direction = "LONG" if trend == "UP" else "SHORT"
+        else:
+            # F1+F2 both skipped → use breakout bar direction below
+            direction = None
         # 15:30 5m breakout direction (or 14:30 in gap windows)
         nyse_open_t = get_nyse_open_cet(today)
-        breakout_bar_cet_time = nyse_open_t  # the 5m bar closing at NYSE open
-        # find that bar in df_5m
         from zoneinfo import ZoneInfo
         cet = ZoneInfo("Europe/Berlin")
-        breakout_ts = pd.Timestamp(dt.datetime.combine(today, breakout_bar_cet_time),
+        breakout_ts = pd.Timestamp(dt.datetime.combine(today, nyse_open_t),
                                     tz=cet).tz_convert("UTC")
         if breakout_ts not in df_5m.index:
             return None
         br_bar = df_5m.loc[breakout_ts]
-        if direction == "LONG" and float(br_bar["close"]) <= float(br_bar["open"]):
-            return None
-        if direction == "SHORT" and float(br_bar["close"]) >= float(br_bar["open"]):
-            return None
+        breakout_long = float(br_bar["close"]) > float(br_bar["open"])
+        breakout_short = float(br_bar["close"]) < float(br_bar["open"])
+        if direction is None:
+            if breakout_long:
+                direction = "LONG"
+            elif breakout_short:
+                direction = "SHORT"
+            else:
+                return None
+        else:
+            if direction == "LONG" and not breakout_long:
+                return None
+            if direction == "SHORT" and not breakout_short:
+                return None
         # F3 SP500 correlation
-        f3 = correlation_proxy_pass(sp500_5m, ts, direction)
         f3_count = 0
-        if f3 is False:
-            return None
-        if f3 is True:
-            f3_count = 1
-        # f3 is None → fallback pass (logged)
+        if "F3" not in skip:
+            f3 = correlation_proxy_pass(sp500_5m, ts, direction)
+            if f3 is False:
+                return None
+            if f3 is True:
+                f3_count = 1
+            # f3 is None → fallback pass (logged)
         # F4 yesterday extremes (only filters="A")
         filters_total = 4 if self.filters == "A" else 3
         filters_met = 2 + f3_count  # F1 + F2 + (F3 if known)
-        if self.filters == "A":
+        if self.filters == "A" and "F4" not in skip:
             yh = yesterday_extremes(daily_df, today)
             if yh is None:
                 return None

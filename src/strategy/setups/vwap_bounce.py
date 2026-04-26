@@ -119,13 +119,18 @@ class VwapBounceSetup(BaseSetup):
         return entry + 2 * risk if direction == "LONG" else entry - 2 * risk
 
     def check_entry_at(self, df_5m: pd.DataFrame, ts: pd.Timestamp,
-                       *, history_5m: Optional[pd.DataFrame] = None) -> Optional[Signal]:
+                       *, history_5m: Optional[pd.DataFrame] = None,
+                       skip_filters: Optional[set] = None) -> Optional[Signal]:
         """Vyhodnocení 1 baru.
 
         df_5m:      bary aktuálního dne až po `ts` včetně.
         history_5m: ≥ KC_EMA_PERIOD+ATR_PERIOD bars before today, pro warmup
                     Keltneru a 30m ADX. Pokud None, použije se df_5m sám.
+        skip_filters: set z {"F1","F2","F3","F4"} pro ablation. F3 (engulfing)
+                    je entry-defining; když skipnuto, používá se touch-only jako
+                    direction proxy.
         """
+        skip = skip_filters or set()
         if ts not in df_5m.index:
             return None
         if not (ENTRY_WINDOW_START <= _to_cet_time(ts) < ENTRY_WINDOW_END):
@@ -135,12 +140,13 @@ class VwapBounceSetup(BaseSetup):
         if len(ctx_up_to) < KC_EMA_PERIOD + KC_ATR_PERIOD:
             return None
         # F1 ADX 30m < 20
-        adx30 = adx_on_30m(ctx_up_to)
-        if adx30.dropna().empty:
-            return None
-        last_adx = float(adx30.dropna().iloc[-1])
-        if last_adx >= ADX_NO_TREND_THRESHOLD:
-            return None
+        if "F1" not in skip:
+            adx30 = adx_on_30m(ctx_up_to)
+            if adx30.dropna().empty:
+                return None
+            last_adx = float(adx30.dropna().iloc[-1])
+            if last_adx >= ADX_NO_TREND_THRESHOLD:
+                return None
         # F2 Keltner touch
         kc = keltner_state(ctx_up_to).iloc[-1]
         if pd.isna(kc["kc_upper"]):
@@ -148,27 +154,36 @@ class VwapBounceSetup(BaseSetup):
         cur = ctx_up_to.iloc[-1]
         touch_lower = float(cur["low"]) <= float(kc["kc_lower"])
         touch_upper = float(cur["high"]) >= float(kc["kc_upper"])
-        if not (touch_lower or touch_upper):
+        if "F2" not in skip and not (touch_lower or touch_upper):
             return None
         # F3 Brooks engulfing on (prev, cur)
         if len(ctx_up_to) < 2:
             return None
-        eng = is_engulfing(ctx_up_to.iloc[-2], cur)
-        if eng is None:
-            return None
-        # Direction must match touch
-        if eng == "BULL" and not touch_lower:
-            return None
-        if eng == "BEAR" and not touch_upper:
-            return None
+        if "F3" not in skip:
+            eng = is_engulfing(ctx_up_to.iloc[-2], cur)
+            if eng is None:
+                return None
+            if eng == "BULL" and not touch_lower and "F2" not in skip:
+                return None
+            if eng == "BEAR" and not touch_upper and "F2" not in skip:
+                return None
+            direction = "LONG" if eng == "BULL" else "SHORT"
+        else:
+            # F3 skipped: derive direction from touch side (or fallback to bar direction)
+            if touch_lower:
+                direction = "LONG"
+            elif touch_upper:
+                direction = "SHORT"
+            else:
+                # F2 also skipped → use bar color
+                direction = "LONG" if float(cur["close"]) > float(cur["open"]) else "SHORT"
         # F4 Volume confirm (only Filter A)
         filters_total = 4 if self.filters == "A" else 3
         filters_met = 3
-        if self.filters == "A":
+        if self.filters == "A" and "F4" not in skip:
             if not volume_confirm(ctx_up_to, ts):
                 return None
             filters_met = 4
-        direction = "LONG" if eng == "BULL" else "SHORT"
         entry = float(cur["close"])
         sl = self.get_sl(entry, direction)
         tp = self.get_tp(entry, sl, direction, kc_mid=float(kc["kc_mid"]))
