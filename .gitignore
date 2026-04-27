@@ -41,3 +41,9 @@ Thumbs.db
 # Backup
 *.backup
 *.bak
+
+# Test artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

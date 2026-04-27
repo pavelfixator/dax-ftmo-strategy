@@ -42,21 +42,26 @@ def test_regime_signals_dataclass_instantiates():
     assert s.ema_slope_label == "UP"
 
 
-def test_classify_regime_raw_is_stub():
-    from src.strategy.regime import classify_regime_raw, RegimeSignals
+def test_classify_regime_raw_returns_regime_enum():
+    """Post-Sekce-2 smoke: full impl returns Regime, not raises."""
+    from src.strategy.regime import classify_regime_raw, RegimeSignals, Regime
     s = RegimeSignals(
         ts=dt.datetime(2026, 4, 27, 8, 0, tzinfo=dt.timezone.utc),
         atr_pct_label="HIGH", atr_pct_value=1.8,
         adx_h4_label="WEAK", adx_h4_value=15.0,
         ema_slope_label="DOWN", ema_slope_value=-0.0006,
     )
-    with pytest.raises(NotImplementedError):
-        classify_regime_raw(s)
+    result = classify_regime_raw(s)
+    assert isinstance(result, Regime)
+    assert result == Regime.CRASH  # HIGH+DOWN → CRASH per spec
 
 
-def test_get_active_regime_is_stub():
+def test_get_active_regime_returns_regime_enum():
+    """Post-Sekce-2 smoke: full impl returns Regime, not raises."""
     from src.strategy.regime import Regime, get_active_regime
-    with pytest.raises(NotImplementedError):
-        get_active_regime(history=[Regime.CALM, Regime.CALM],
-                           raw_today=Regime.TREND,
-                           current_active=Regime.CALM)
+    result = get_active_regime(history=[Regime.CALM, Regime.CALM],
+                                raw_today=Regime.TREND,
+                                current_active=Regime.CALM)
+    # 1-day TREND signal vs 2-day consensus rule → stay CALM
+    assert isinstance(result, Regime)
+    assert result == Regime.CALM
