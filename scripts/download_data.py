@@ -60,7 +60,12 @@ USER_AGENT = "dax-ftmo-bot/0.2 (+research)"
 
 
 def _http_get(url: str, *, timeout: float = 30.0, retries: int = 3) -> bytes | None:
-    """Returns raw bytes on 200, None on 404 / empty, raises on persistent failure."""
+    """Returns raw bytes on 200, None on 404 / empty / persistent failure.
+
+    No raise on persistent fail — returns None and logs warning. Caller treats
+    None as "no data available" (saves 0-byte cache marker). Suitable for
+    long-running parquet builds that should not abort on transient 503s.
+    """
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
@@ -72,7 +77,9 @@ def _http_get(url: str, *, timeout: float = 30.0, retries: int = 3) -> bytes | N
         except requests.RequestException as e:
             last_exc = e
             time.sleep(1.5 ** attempt)
-    raise RuntimeError(f"GET failed after {retries} attempts: {url} ({last_exc})")
+    print(f"  WARN {url}: persistent failure ({last_exc}); marking as no-data",
+          file=sys.stderr)
+    return None
 
 
 def _bi5_url(symbol: str, ts: dt.datetime) -> str:
