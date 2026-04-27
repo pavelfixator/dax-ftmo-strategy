@@ -66,6 +66,7 @@ from src.backtest.extended_ablation import (
 )
 
 OUT_DIR = ROOT / "experiments" / "extended_ablation"
+PROGRESS_PATH = OUT_DIR / "progress.json"
 PARQUET = ROOT / "data" / "historical" / "GER40_5m_2019-2023.parquet"
 EXTENDED_PARQUET = ROOT / "data" / "historical" / "GER40_5m_2015-2026.parquet"
 
@@ -282,8 +283,35 @@ def run(parquet_path: Path, *, quick: bool = False) -> dict:
     cells = []
     primary_count = len(SETUP_NAMES) * len(REGIMES_CYCLED) * len(CONFIGS)
     f5_count = len(ORB_CRASH_F5_CANDIDATES) + len(US_CALM_F5_CANDIDATES)
-    print(f"[ablation] evaluating {primary_count} primary + {f5_count} F5 = {primary_count + f5_count} cells")
+    total_cells = primary_count + f5_count
+    print(f"[ablation] evaluating {primary_count} primary + {f5_count} F5 = {total_cells} cells")
     t0 = time.time()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    PROGRESS_PATH.write_text(json.dumps({
+        "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "total_cells": total_cells,
+        "completed_cells": 0,
+        "elapsed_s": 0,
+        "eta_s": None,
+        "current_cell": None,
+        "status": "running",
+    }, indent=2), encoding="utf-8")
+
+    def _update_progress(idx: int, label: str, status: str = "running"):
+        elapsed = time.time() - t0
+        avg_per_cell = elapsed / max(idx, 1)
+        eta_s = (total_cells - idx) * avg_per_cell if idx < total_cells else 0
+        PROGRESS_PATH.write_text(json.dumps({
+            "started_at_utc": dt.datetime.utcfromtimestamp(t0).isoformat() + "Z",
+            "now_utc": dt.datetime.utcnow().isoformat() + "Z",
+            "total_cells": total_cells,
+            "completed_cells": idx,
+            "pct": round(100 * idx / total_cells, 1),
+            "elapsed_s": round(elapsed, 1),
+            "eta_s": round(eta_s, 1),
+            "current_cell": label,
+            "status": status,
+        }, indent=2), encoding="utf-8")
     for setup in SETUP_NAMES:
         for regime in REGIMES_CYCLED:
             for cfg in CONFIGS:
@@ -293,10 +321,12 @@ def run(parquet_path: Path, *, quick: bool = False) -> dict:
                 m = cell_metrics(raw)
                 m["config"] = cfg
                 cells.append(m)
+                label = f"{setup}/{regime.value}/{cfg}"
                 print(f"  {setup} {regime.value:10s} {cfg:18s} "
                       f"sig={m['n_signals']:5d} trd={m['n_trades']:5d} "
                       f"WR={m['wr']:.2f} exp={m['expectancy']:+.1f} "
                       f"flag={m['sample_flag']}")
+                _update_progress(len(cells), label)
     # F5 cells — Exp #12 candidates
     for cand_name, cand_func in ORB_CRASH_F5_CANDIDATES.items():
         raw = evaluate_cell("orb_dax", Regime.CRASH, set(),
@@ -308,6 +338,7 @@ def run(parquet_path: Path, *, quick: bool = False) -> dict:
         print(f"  orb_dax    CRASH      F5:{cand_name:22s} "
               f"sig={m['n_signals']:5d} trd={m['n_trades']:5d} "
               f"WR={m['wr']:.2f} exp={m['expectancy']:+.1f}")
+        _update_progress(len(cells), f"orb_dax/CRASH/F5:{cand_name}")
     for cand_name, cand_func in US_CALM_F5_CANDIDATES.items():
         # Wrap us-style F5 (history, direction) signature to a uniform interface
         def _wrap(history, direction, _cf=cand_func):
@@ -321,6 +352,8 @@ def run(parquet_path: Path, *, quick: bool = False) -> dict:
         print(f"  us_momentum CALM      F5:{cand_name:22s} "
               f"sig={m['n_signals']:5d} trd={m['n_trades']:5d} "
               f"WR={m['wr']:.2f} exp={m['expectancy']:+.1f}")
+        _update_progress(len(cells), f"us_momentum/CALM/F5:{cand_name}")
+    _update_progress(len(cells), "all cells done", status="completed")
     print(f"[ablation] all cells done in {time.time() - t0:.1f}s")
 
     # FDR correction across cells
