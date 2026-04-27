@@ -157,6 +157,14 @@ def request_budget_ok(used_today: int, limit: int = 882) -> RuleResult:
     return RuleResult(True, f"requests {used_today}/{limit}")
 
 
+def regime_allows_trading(regime) -> RuleResult:
+    """v3.3.1 §2.3: UNDEFINED regime → NO TRADE (multiplier 0×)."""
+    from src.strategy.regime import Regime  # local to avoid circular at import-time
+    if regime == Regime.UNDEFINED:
+        return RuleResult(False, "regime UNDEFINED — no trade today")
+    return RuleResult(True, f"regime {regime.value} allows trading")
+
+
 def get_nyse_open_cet(d: dt.date) -> dt.time:
     """NYSE 9:30 ET converted to local CET/CEST.
 

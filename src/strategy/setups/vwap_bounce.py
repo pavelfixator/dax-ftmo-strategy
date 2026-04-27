@@ -1,4 +1,11 @@
-"""VWAP-Bounce Setup — Range Mean Reversion (Keltner channels).
+# DEPRECATED v3.3.1 — VWAP DROPPED (RRR 1:2 violation)
+"""VWAP-Bounce Setup — DEPRECATED v3.3.1.
+
+Důvod: post-9-kol adversarial design analýza Iter2 ukázala 120 sig → 0 trades
+v calm regime, RRR 1:2 hard rule violation (TP1 = Keltner mid často <1× SL).
+v3.3.1 redukuje na 2 setupy: ORB-DAX + US-Momentum (oba regime-aware).
+
+Modul zůstává pro Iter2/Iter2b benchmark, ale není používán post-Sekce 3.
 
 Spec: Strategy v3.2 §Setup 2 + Pavel's hybrid plan 2026-04-26.
 

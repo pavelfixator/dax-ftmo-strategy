@@ -114,6 +114,22 @@ def compute_lots(
     )
 
 
+# v3.3.1 — regime-aware sizing wrapper. Re-export for callers that want to
+# stay within risk_manager namespace.
+def _import_sizing_v331():  # lazy to avoid circular when regime imports risk
+    from src.risk.sizing_v331 import calculate_lots_v331
+    return calculate_lots_v331
+
+
+def calculate_lots_v331(*args, **kwargs) -> SizingResult:
+    """v3.3.1 wrapper — delegates to src.risk.sizing_v331.calculate_lots_v331.
+
+    Provided here so callers can `from src.risk.risk_manager import calculate_lots_v331`
+    without a separate import line. Pavel hybrid plan 2026-04-27 §3.
+    """
+    return _import_sizing_v331()(*args, **kwargs)
+
+
 def derive_risk_state(
     cumulative_pnl_usd: float,
     *,

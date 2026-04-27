@@ -29,9 +29,18 @@ from src.strategy.setups.base_setup import Signal
 from src.strategy.setups.orb_dax import OrbDaxSetup, aggregate_daily
 from src.strategy.setups.vwap_bounce import VwapBounceSetup
 from src.strategy.setups.us_momentum import UsMomentumSetup
+# v3.3.1 regime-aware
+from src.strategy.setups.orb_dax_v331 import OrbDaxSetupV331
+from src.strategy.setups.us_momentum_v331 import UsMomentumSetupV331
+from src.strategy.regime import Regime, get_active_regime
+from src.strategy.regime.classifier import (
+    classify_regime_raw, derive_signals_from_market_data,
+)
 from src.risk.risk_manager import compute_lots, derive_risk_state, RiskState
+from src.risk.sizing_v331 import calculate_lots_v331
 from src.risk.rules_engine import (
     in_trading_window, before_hard_stop, max_positions, rrr_acceptable,
+    regime_allows_trading,
     FORCED_CLOSE_MON_THU, FORCED_CLOSE_FRI,
 )
 
@@ -149,6 +158,15 @@ def _force_close_due(pos: OpenPosition, ts_cet: pd.Timestamp) -> bool:
     return ts_cet.time() >= cutoff
 
 
+def _aggregate_h4(m5_df: pd.DataFrame) -> pd.DataFrame:
+    if m5_df.empty:
+        return m5_df
+    return m5_df.resample("4h", label="right", closed="right").agg({
+        "open": "first", "high": "max", "low": "min",
+        "close": "last", "volume": "sum",
+    }).dropna(subset=["close"])
+
+
 def run_backtest(
     feed: BarFeed,
     *,
@@ -158,23 +176,38 @@ def run_backtest(
     risk_state: RiskState = "normal",
     sp500_feed: Optional[BarFeed] = None,
     daily_history: Optional[pd.DataFrame] = None,
+    use_v331: bool = False,
 ) -> BacktestResult:
-    """Execute backtest over feed, returns BacktestResult."""
+    """Execute backtest over feed, returns BacktestResult.
+
+    v3.3.1 (use_v331=True): activates regime-aware setupy + sizing.
+    Daily regime cached per CET date; UNDEFINED → no trade for that day.
+    Default False for backward compat with Iter1/Iter2/Iter2b reports.
+    """
     from zoneinfo import ZoneInfo
     cet = ZoneInfo("Europe/Berlin")
 
     if setups is None:
-        setups = [
-            OrbDaxSetup(filters="A"), OrbDaxSetup(filters="B"),
-            VwapBounceSetup(filters="A"), VwapBounceSetup(filters="B"),
-            UsMomentumSetup(filters="A"), UsMomentumSetup(filters="B"),
-        ]
+        if use_v331:
+            setups = [OrbDaxSetupV331(), UsMomentumSetupV331()]
+        else:
+            setups = [
+                OrbDaxSetup(filters="A"), OrbDaxSetup(filters="B"),
+                VwapBounceSetup(filters="A"), VwapBounceSetup(filters="B"),
+                UsMomentumSetup(filters="A"), UsMomentumSetup(filters="B"),
+            ]
 
     df = feed.to_dataframe()
     if daily_history is None:
         daily_history = aggregate_daily(df)
 
     sp_df = sp500_feed.to_dataframe() if sp500_feed is not None else None
+
+    # v3.3.1 regime cache
+    h4_full = _aggregate_h4(df) if use_v331 else None
+    regime_cache: dict[dt.date, Regime] = {}
+    regime_raw_history: list[Regime] = []
+    active_regime: Optional[Regime] = None
 
     result = BacktestResult()
     open_pos: Optional[OpenPosition] = None
@@ -184,6 +217,25 @@ def run_backtest(
     # Cache today's session per CET date for setups (avoids re-slicing every bar)
     cet_dates = pd.Series([t.tz_convert(cet).date() for t in df.index],
                            index=df.index)
+
+    def _regime_for(today: dt.date, ts: pd.Timestamp) -> Regime:
+        nonlocal active_regime
+        if today in regime_cache:
+            return regime_cache[today]
+        try:
+            ts_8am_cet = pd.Timestamp(dt.datetime.combine(today, dt.time(8, 0)),
+                                       tz=cet).tz_convert("UTC").to_pydatetime()
+            sig = derive_signals_from_market_data(daily_history, h4_full,
+                                                    df, ts_8am_cet)
+            raw = classify_regime_raw(sig)
+        except (ValueError, KeyError):
+            raw = Regime.UNDEFINED
+        active = get_active_regime(regime_raw_history, raw,
+                                     current_active=active_regime)
+        regime_cache[today] = active
+        regime_raw_history.append(raw)
+        active_regime = active
+        return active
 
     for ts, row in df.iterrows():
         ts_cet = ts.tz_convert(cet)
@@ -239,22 +291,33 @@ def run_backtest(
             if not max_positions(0).allowed:
                 continue  # paranoia; we know we're flat
 
+            # v3.3.1: regime gate
+            if use_v331:
+                regime = _regime_for(today, ts)
+                if not regime_allows_trading(regime).allowed:
+                    continue
+            else:
+                regime = None
+
             # Today's session for setup context
             today_session = df[cet_dates == today].loc[:ts]
             history = df.loc[:ts]
             best: Optional[Signal] = None
             for setup in setups:
                 try:
-                    if isinstance(setup, OrbDaxSetup):
+                    if isinstance(setup, OrbDaxSetupV331):
+                        sig = setup.check_entry_at(today_session, daily_history,
+                                                    ts, regime, history_5m=history)
+                    elif isinstance(setup, UsMomentumSetupV331):
+                        sig = setup.check_entry_at(history, daily_history, ts,
+                                                    regime, sp500_5m=None)
+                    elif isinstance(setup, OrbDaxSetup):
                         sig = setup.check_entry_at(today_session, daily_history,
                                                     ts, history_5m=history)
                     elif isinstance(setup, VwapBounceSetup):
                         sig = setup.check_entry_at(today_session, ts,
                                                     history_5m=history)
                     elif isinstance(setup, UsMomentumSetup):
-                        sp_today = (sp_df[cet_dates.reindex(sp_df.index).fillna(pd.NaT)
-                                          == today] if sp_df is not None else None)
-                        # sp_today indexing too clever; safer: skip sp_500 in v1
                         sig = setup.check_entry_at(history, daily_history, ts,
                                                     sp500_5m=None)
                     else:
@@ -272,9 +335,17 @@ def run_backtest(
 
             # Position sizing + RRR check
             sl_points = abs(best.entry - best.sl)
-            sized = compute_lots("A" if best.filters_met == best.filters_total else "B",
-                                  risk_state, sl_points, eur_usd_spot,
-                                  equity_usd=equity_usd, dax_price=float(row["close"]))
+            setup_type_for_sizing = "A" if best.filters_met == best.filters_total else "B"
+            if use_v331 and regime is not None:
+                sized = calculate_lots_v331(
+                    setup_type_for_sizing, risk_state, regime,
+                    sl_points, eur_usd_spot,
+                    equity_usd=equity_usd, dax_price=float(row["close"]))
+            else:
+                sized = compute_lots(setup_type_for_sizing, risk_state,
+                                      sl_points, eur_usd_spot,
+                                      equity_usd=equity_usd,
+                                      dax_price=float(row["close"]))
             if sized.lots == 0:
                 continue
             if not rrr_acceptable(best.entry, best.sl, best.tp).allowed:

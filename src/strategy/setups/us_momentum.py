@@ -1,4 +1,8 @@
-"""US-Momentum Setup — NY Open Continuation.
+# DEPRECATED v3.3.1, see us_momentum_v331.py
+"""US-Momentum Setup — NY Open Continuation (v3.2 — DEPRECATED).
+
+Po v3.3.1 redesign nahrazeno regime-aware variantou v `us_momentum_v331.py`.
+Modul zůstává pro Iter2/Iter2b benchmark, ale není používán post-Sekce 3.
 
 Spec: Strategy v3.2 §Setup 3 + Pavel's hybrid plan 2026-04-26.
 

@@ -1,4 +1,9 @@
-"""ORB-DAX Setup — Trend Open Range Breakout.
+# DEPRECATED v3.3.1, see orb_dax_v331.py
+"""ORB-DAX Setup — Trend Open Range Breakout (v3.2 — DEPRECATED).
+
+Po v3.3.1 redesign nahrazeno regime-aware variantou v `orb_dax_v331.py`.
+Tento modul zůstává pro backward-compat a benchmark Iter2/Iter2b reportů,
+ale není používán novým engine post-Sekce 3 integration.
 
 Spec: Strategy v3.2 §Setup 1 + Pavel's hybrid plan 2026-04-26.
 
@@ -123,7 +128,11 @@ def daily_bias(daily_df: pd.DataFrame, today_cet_date: dt.date,
 
 
 def aggregate_daily(df_5m: pd.DataFrame) -> pd.DataFrame:
-    """5m → D1 OHLC aggregation by CET trading date (no overnight session)."""
+    """5m → D1 OHLC aggregation by CET trading date (no overnight session).
+
+    Returns tz-aware UTC index (CET midnight localized to UTC). This keeps
+    daily_df comparable to tz-aware timestamps in classifier/persistence.
+    """
     from zoneinfo import ZoneInfo
     cet = ZoneInfo("Europe/Berlin")
     df = df_5m.copy()
@@ -136,7 +145,7 @@ def aggregate_daily(df_5m: pd.DataFrame) -> pd.DataFrame:
         "close": grp["close"].last(),
         "volume": grp["volume"].sum(),
     })
-    daily.index = pd.to_datetime(daily.index)
+    daily.index = pd.to_datetime(daily.index).tz_localize("UTC")
     return daily
 
 
