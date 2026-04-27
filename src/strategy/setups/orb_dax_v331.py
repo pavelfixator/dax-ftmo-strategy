@@ -90,7 +90,9 @@ class OrbDaxSetupV331(BaseSetup):
 
     def check_entry_at(self, session_5m: pd.DataFrame, daily_df: pd.DataFrame,
                        ts: pd.Timestamp, regime: Regime,
-                       *, history_5m: Optional[pd.DataFrame] = None) -> Optional[Signal]:
+                       *, history_5m: Optional[pd.DataFrame] = None,
+                       skip_filters: Optional[set] = None,
+                       f5_override=None) -> Optional[Signal]:
         """Vyhodnocení 1 baru s regime-aware filtry.
 
         Args:
@@ -104,6 +106,7 @@ class OrbDaxSetupV331(BaseSetup):
             Signal pokud projdou regime-specific filtry, jinak None.
             UNDEFINED regime → vždy None.
         """
+        skip = skip_filters or set()
         if regime == Regime.UNDEFINED:
             return None
         active_filters = REGIME_FILTERS[regime]
@@ -115,35 +118,50 @@ class OrbDaxSetupV331(BaseSetup):
         bars_up_to = session_5m.loc[:ts]
         # F2 ORB15 — required for entry direction calculation in all regimes
         orb = compute_orb(bars_up_to)
-        if orb is None:
+        if orb is None and "F2" not in skip:
             return None
+        if orb is None:
+            return None  # need ORB for breakout direction even when F2 skipped
 
         today_date = _to_cet_date(ts)
-        # F1 Daily Bias — MANDATORY in all 3 regimes per v3.3.1
-        bull, bear = daily_bias(daily_df, today_date)
-        if not (bull or bear):
-            return None
+        # F1 Daily Bias
+        if "F1" in skip:
+            bull = bear = False
+            bias_known = False
+        else:
+            bull, bear = daily_bias(daily_df, today_date)
+            bias_known = True
+            if not (bull or bear):
+                return None
 
         bar = bars_up_to.iloc[-1]
         close = float(bar["close"])
-        if bull and close > orb.orb_high:
-            direction = "LONG"
-        elif bear and close < orb.orb_low:
-            direction = "SHORT"
+        if bias_known:
+            if bull and close > orb.orb_high:
+                direction = "LONG"
+            elif bear and close < orb.orb_low:
+                direction = "SHORT"
+            else:
+                return None
         else:
-            return None
+            if close > orb.orb_high:
+                direction = "LONG"
+            elif close < orb.orb_low:
+                direction = "SHORT"
+            else:
+                return None
 
-        filters_met = 2  # F1 + F2 confirmed
+        filters_met = 2 if bias_known else 1
         filters_total = len(active_filters)
 
         # F3 Volume confirm
-        if "F3" in active_filters:
+        if "F3" in active_filters and "F3" not in skip:
             if float(bar["volume"]) < VOLUME_THRESHOLD * orb.orb_avg_volume:
                 return None
             filters_met += 1
 
         # F4 ATR relative
-        if "F4" in active_filters:
+        if "F4" in active_filters and "F4" not in skip:
             f4 = f4_atr_relative(history_5m, today_date) if history_5m is not None else None
             if f4 is False:
                 return None
@@ -151,11 +169,16 @@ class OrbDaxSetupV331(BaseSetup):
                 filters_met += 1
             # If f4 is None (insufficient history) → don't block, don't count
 
-        # F5_CRASH range expansion
+        # F5_CRASH (default range expansion or override)
         a5_series = atr(bars_up_to, 14).dropna()
         a5 = float(a5_series.iloc[-1]) if not a5_series.empty else None
-        if "F5_CRASH" in active_filters:
-            if not f5_crash_range_expansion(bar, a5):
+        if "F5_CRASH" in active_filters and "F5_CRASH" not in skip:
+            if f5_override is not None:
+                ok = f5_override(bar, history_5m if history_5m is not None else bars_up_to,
+                                  direction)
+            else:
+                ok = f5_crash_range_expansion(bar, a5)
+            if not ok:
                 return None
             filters_met += 1
 

@@ -101,7 +101,10 @@ class UsMomentumSetupV331(BaseSetup):
 
     def check_entry_at(self, df_5m: pd.DataFrame, daily_df: pd.DataFrame,
                        ts: pd.Timestamp, regime: Regime, *,
-                       sp500_5m: Optional[pd.DataFrame] = None) -> Optional[Signal]:
+                       sp500_5m: Optional[pd.DataFrame] = None,
+                       skip_filters: Optional[set] = None,
+                       f5_override=None) -> Optional[Signal]:
+        skip = skip_filters or set()
         if regime == Regime.UNDEFINED:
             return None
         active_filters = REGIME_FILTERS[regime]
@@ -113,22 +116,33 @@ class UsMomentumSetupV331(BaseSetup):
         if not (win_start <= cet_ts.time() < win_end):
             return None
 
-        # F1 Daily Bias — mandatory in all 3 regimes
-        bull, bear = daily_bias(daily_df, today)
-        if not (bull or bear):
-            return None
+        # F1 Daily Bias
+        if "F1" in skip:
+            bull = bear = False
+            bias_known = False
+        else:
+            bull, bear = daily_bias(daily_df, today)
+            bias_known = True
+            if not (bull or bear):
+                return None
 
-        # F2 Pre-US trend (mandatory in TREND + CRASH)
-        if "F2" in active_filters:
+        # F2 Pre-US trend (only in active set + not skipped)
+        trend = None
+        if "F2" in active_filters and "F2" not in skip:
             trend = pre_us_trend(df_5m, today)
             if trend is None:
                 return None
-            if bull and trend != "UP":
+            if bias_known and bull and trend != "UP":
                 return None
-            if bear and trend != "DOWN":
+            if bias_known and bear and trend != "DOWN":
                 return None
 
-        direction = "LONG" if bull else "SHORT"
+        if bias_known:
+            direction = "LONG" if bull else "SHORT"
+        elif trend is not None:
+            direction = "LONG" if trend == "UP" else "SHORT"
+        else:
+            direction = None  # decided by breakout bar below
 
         # Breakout bar at NYSE open (5m bar closing at NYSE open)
         nyse_open_t = get_nyse_open_cet(today)
@@ -139,18 +153,28 @@ class UsMomentumSetupV331(BaseSetup):
         if breakout_ts not in df_5m.index:
             return None
         br_bar = df_5m.loc[breakout_ts]
-        if direction == "LONG" and float(br_bar["close"]) <= float(br_bar["open"]):
-            return None
-        if direction == "SHORT" and float(br_bar["close"]) >= float(br_bar["open"]):
-            return None
+        breakout_long = float(br_bar["close"]) > float(br_bar["open"])
+        breakout_short = float(br_bar["close"]) < float(br_bar["open"])
+        if direction is None:
+            if breakout_long:
+                direction = "LONG"
+            elif breakout_short:
+                direction = "SHORT"
+            else:
+                return None
+        else:
+            if direction == "LONG" and not breakout_long:
+                return None
+            if direction == "SHORT" and not breakout_short:
+                return None
 
-        filters_met = 1  # F1
+        filters_met = 1 if bias_known else 0
         filters_total = len(active_filters)
-        if "F2" in active_filters:
+        if "F2" in active_filters and "F2" not in skip:
             filters_met += 1
 
-        # F3 SP500 correlation (or fallback pass if missing)
-        if "F3" in active_filters:
+        # F3 SP500 correlation
+        if "F3" in active_filters and "F3" not in skip:
             f3 = correlation_proxy_pass(sp500_5m, ts, direction)
             if f3 is False:
                 return None
@@ -159,7 +183,7 @@ class UsMomentumSetupV331(BaseSetup):
             # f3 is None → fallback pass (don't count toward met)
 
         # F4 Yesterday H/L runway
-        if "F4" in active_filters:
+        if "F4" in active_filters and "F4" not in skip:
             yh = yesterday_extremes(daily_df, today)
             if yh is None:
                 return None
@@ -171,12 +195,16 @@ class UsMomentumSetupV331(BaseSetup):
                 return None
             filters_met += 1
 
-        # F5_CALM (MACD 3-10 alignment) — only CALM regime
-        if "F5_CALM" in active_filters:
+        # F5_CALM — default MACD 3-10 alignment, or override
+        if "F5_CALM" in active_filters and "F5_CALM" not in skip:
             history_5m_close = df_5m.loc[:ts, "close"]
             if len(history_5m_close) < MACD_SLOW + MACD_SIGNAL + 5:
                 return None
-            if not f5_calm_macd_aligned(history_5m_close, direction):
+            if f5_override is not None:
+                ok = f5_override(df_5m.loc[:ts], direction)
+            else:
+                ok = f5_calm_macd_aligned(history_5m_close, direction)
+            if not ok:
                 return None
             filters_met += 1
 
