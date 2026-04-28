@@ -121,8 +121,10 @@ class UsMomentumSetupV331(BaseSetup):
         if not (win_start <= cet_ts.time() < win_end):
             return None
 
-        # F1 Daily Bias
-        if "F1" in skip:
+        # F1 Daily Bias — bypass if not in active_filters (e.g. CRASH regime
+        # in v3.3.2.1) or explicitly skipped in ablation
+        f1_bypass = ("F1" not in active_filters) or ("F1" in skip)
+        if f1_bypass:
             bull = bear = False
             bias_known = False
         else:
