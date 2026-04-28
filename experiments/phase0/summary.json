@@ -1,0 +1,106 @@
+{
+  "started_at_utc": "2026-04-28T08:54:33.269883Z",
+  "now_utc": "2026-04-28T10:21:41.586905Z",
+  "elapsed_s": 5228.3,
+  "spec_version": "v3.3.2.1",
+  "window": [
+    "2015-01-01 23:00:00+00:00",
+    "2026-03-31 23:55:00+00:00"
+  ],
+  "n_bars": 680859,
+  "regime_distribution": {
+    "TREND": 756,
+    "CALM": 213,
+    "CRASH": 89,
+    "UNDEFINED": 1830
+  },
+  "active_cells": [
+    {
+      "setup": "orb_dax",
+      "regime": "CALM",
+      "n_trades": 122,
+      "wr": 0.3442622950819672,
+      "expectancy": 18.84356893736224,
+      "sharpe": 3.5956320642325634,
+      "pf": 1.7608653075347331,
+      "max_dd_pts": -668.9571355502558,
+      "fdr_significant": false,
+      "sample_flag": "PRIMARY"
+    },
+    {
+      "setup": "us_momentum",
+      "regime": "TREND",
+      "n_trades": 569,
+      "wr": 0.45518453427065025,
+      "expectancy": 3.284964403025567,
+      "sharpe": 0.790595927970153,
+      "pf": 1.1564045053191563,
+      "max_dd_pts": -2196.331235772559,
+      "fdr_significant": false,
+      "sample_flag": "PRIMARY"
+    },
+    {
+      "setup": "us_momentum",
+      "regime": "CALM",
+      "n_trades": 457,
+      "wr": 0.4923413566739606,
+      "expectancy": -0.8227773081344509,
+      "sharpe": -0.2678852494255768,
+      "pf": 0.9627876105708711,
+      "max_dd_pts": -2550.602220213488,
+      "fdr_significant": false,
+      "sample_flag": "PRIMARY"
+    },
+    {
+      "setup": "us_momentum",
+      "regime": "CRASH",
+      "n_trades": 182,
+      "wr": 0.5274725274725275,
+      "expectancy": 44.81747783955522,
+      "sharpe": 4.443683873348014,
+      "pf": 2.158599834668521,
+      "max_dd_pts": -4459.908291136155,
+      "fdr_significant": false,
+      "sample_flag": "PRIMARY"
+    }
+  ],
+  "ftmo_compound": {
+    "trades": 1330,
+    "total_pnl_usd": 12904.738444074255,
+    "max_dd_usd": -7145.3934775638845,
+    "max_dd_pct_of_equity": -0.07145393477563884,
+    "daily_loss_violations": 0,
+    "total_loss_violation": false,
+    "compound_l1_trigger_idx": null,
+    "compound_l2_trigger_idx": null,
+    "compound_l3_trigger_idx": 5,
+    "ftmo_compliance_pass": true
+  },
+  "monte_carlo": {
+    "iterations": 10000,
+    "pnl_total_usd": {
+      "mean": 12876.237146740452,
+      "median": 12831.92460009981,
+      "p5": 7471.527627839643,
+      "p95": 18377.219368183323
+    },
+    "max_dd_usd": {
+      "mean": -1401.2559385653935,
+      "p5": -2182.39595003174,
+      "p50": -1323.7002808897241,
+      "p95": -880.2768263209772
+    },
+    "max_dd_pct_5p": -0.021823959500317403,
+    "sharpe": {
+      "mean": 1.692450525919204,
+      "p5": 1.039446588168255
+    },
+    "p_hard_stop": 0.0,
+    "risk_of_ruin": 0.0
+  },
+  "walk_forward_summary": {
+    "n_windows": 21,
+    "oos_pass_count": 2,
+    "oos_pass_pct": 9.523809523809524
+  }
+}

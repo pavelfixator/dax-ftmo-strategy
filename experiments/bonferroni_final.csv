@@ -1,0 +1,5 @@
+setup,regime,config,n_trades,p_value,expectancy,wr,fdr_significant_in_full_44cell_run,bonferroni_pass_4cell_subset,fdr_pass_4cell_subset
+orb_dax,CALM,drop_F3,122,0.006845715091148,18.84356893736224,0.3442622950819672,True,True,True
+us_momentum,TREND,baseline_F1234,569,0.1176681952886535,3.284964403025567,0.4551845342706502,False,False,False
+us_momentum,CALM,drop_F2,232,0.0187497692918387,6.497555408245121,0.5646551724137931,False,False,True
+us_momentum,CRASH,drop_F1,182,0.0001078199985049,44.81747783955522,0.5274725274725275,True,True,True
