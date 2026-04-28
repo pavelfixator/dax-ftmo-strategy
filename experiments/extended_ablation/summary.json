@@ -1,0 +1,14 @@
+{
+  "n_cells": 44,
+  "regime_counts": {
+    "TREND": 756,
+    "CALM": 213,
+    "CRASH": 89,
+    "UNDEFINED": 1830
+  },
+  "alpha": 0.05,
+  "bootstrap_iters": 1000,
+  "acceptance_boost_pct": 0.1,
+  "train_end": "2023-01-01",
+  "test_start": "2023-01-01"
+}

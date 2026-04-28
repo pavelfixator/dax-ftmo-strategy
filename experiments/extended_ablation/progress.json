@@ -1,0 +1,11 @@
+{
+  "started_at_utc": "2026-04-27T14:46:53.426502Z",
+  "now_utc": "2026-04-28T02:02:23.903372Z",
+  "total_cells": 44,
+  "completed_cells": 44,
+  "pct": 100.0,
+  "elapsed_s": 40530.5,
+  "eta_s": 0,
+  "current_cell": "all cells done",
+  "status": "completed"
+}
