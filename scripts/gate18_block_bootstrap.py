@@ -73,7 +73,7 @@ BSC_CAP_LOTS = 5_000.0 / (200.0 * EUR_USD)  # ≈ 23.148
 GATE18_REGIME_MULTIPLIERS = {
     Regime.TREND: 1.0,
     Regime.CALM: 1.0,
-    Regime.CRASH: 0.5,         # defensive
+    Regime.CRASH: 1.0,         # v3.3.5 STEP 1: 0.5 → 1.0 (mirror sizing_v331)
     Regime.UNDEFINED: 0.0,
 }
 

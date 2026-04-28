@@ -20,8 +20,9 @@ class TestRegimeMultipliers:
     def test_calm_07x(self):
         assert REGIME_RISK_MULTIPLIERS[Regime.CALM] == 0.7
 
-    def test_crash_05x(self):
-        assert REGIME_RISK_MULTIPLIERS[Regime.CRASH] == 0.5
+    def test_crash_10x_v3_3_5_step_1(self):
+        # v3.3.5 STEP 1: CRASH 0.5 → 1.0 (post 16-kolo adversarial review)
+        assert REGIME_RISK_MULTIPLIERS[Regime.CRASH] == 1.0
 
     def test_undefined_zero(self):
         assert REGIME_RISK_MULTIPLIERS[Regime.UNDEFINED] == 0.0
@@ -57,7 +58,8 @@ class TestCalculateLotsV331:
             ratio = r_calm.lots / r_trend.lots
             assert 0.65 <= ratio <= 0.75
 
-    def test_crash_05x_halves_lots_when_standard_binds(self):
+    def test_crash_10x_matches_trend_v3_3_5_step_1(self):
+        # v3.3.5 STEP 1: CRASH multiplier boosted 0.5 → 1.0 → matches TREND magnitude
         r_trend = calculate_lots_v331("A", "normal", Regime.TREND,
                                        sl_points=300, eur_usd_spot=EURUSD,
                                        dax_price=DAX)
@@ -66,7 +68,7 @@ class TestCalculateLotsV331:
                                        dax_price=DAX)
         if r_trend.capped_by == "standard" and r_crash.capped_by == "standard":
             ratio = r_crash.lots / r_trend.lots
-            assert 0.45 <= ratio <= 0.55
+            assert 0.95 <= ratio <= 1.05  # both 1.0× now
 
     def test_disabled_state_zero(self):
         # B in warning state = disabled regardless of regime
@@ -91,8 +93,25 @@ class TestCalculateLotsV331:
         r = calculate_lots_v331("A", "normal", Regime.CRASH,
                                  sl_points=300, eur_usd_spot=EURUSD,
                                  dax_price=DAX)
-        # base A normal = 1000 USD; CRASH 0.5× → 500 USD risk_usd
-        assert r.risk_usd == 500.0
+        # v3.3.5 STEP 1: base A normal = 1000 USD; CRASH 1.0× → 1000 USD risk_usd
+        assert r.risk_usd == 1000.0
+
+    def test_crash_multiplier_v3_3_5_step_1(self):
+        """v3.3.5 STEP 1: CRASH multiplier 0.5 → 1.0 verification.
+
+        Pavel's spec gave argument order swap (sl_points/eur_usd_spot positional
+        confusion); this corrected version uses keyword args.
+        """
+        # Verify multiplier constant
+        assert REGIME_RISK_MULTIPLIERS[Regime.CRASH] == 1.0
+        # Verify lots match boosted formula (no BSC binding for SL=70):
+        # 1000 / (70 × 1.08) × 1.0 = 13.22 (matches Pavel's 13.22 lots target for US-MOM CRASH)
+        r = calculate_lots_v331("A", "normal", Regime.CRASH,
+                                 sl_points=70, eur_usd_spot=EURUSD,
+                                 dax_price=DAX)
+        # Expected ~13.22 (standard branch binds; below BSC 23.15 and margin caps)
+        assert 13.0 < r.lots < 13.5
+        assert r.risk_usd == 1000.0  # boosted to full A-normal $1K
 
     def test_unknown_regime_raises(self):
         class FakeRegime:

@@ -16,9 +16,10 @@ class TestRealisticLots:
         # SL=60, TREND mult 1.0: 1000/(60×1.08)×1.0 = 15.43
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=60) == pytest.approx(15.43, abs=0.01)
 
-    def test_pavel_example_sl50_crash(self):
-        # SL=50, CRASH mult 0.5: 1000/(50×1.08)×0.5 = 9.26
-        assert realistic_lots("us_momentum", Regime.CRASH, sl_pts=50) == pytest.approx(9.26, abs=0.01)
+    def test_pavel_example_sl50_crash_v3_3_5_step_1(self):
+        # v3.3.5 STEP 1: CRASH mult 0.5 → 1.0
+        # SL=50, CRASH mult 1.0: 1000/(50×1.08)×1.0 = 18.52
+        assert realistic_lots("us_momentum", Regime.CRASH, sl_pts=50) == pytest.approx(18.52, abs=0.01)
 
     def test_pavel_example_sl80_calm(self):
         # SL=80, CALM mult 1.0: 1000/(80×1.08)×1.0 = 11.57
@@ -43,10 +44,13 @@ class TestRealisticLots:
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=0) == 0.0
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=-5) == 0.0
 
-    def test_crash_half_size_vs_trend_same_sl(self):
+    def test_crash_matches_trend_v3_3_5_step_1(self):
+        # v3.3.5 STEP 1: CRASH mult 0.5 → 1.0 → matches TREND magnitude
+        # Pre-v3.3.5: crash_lots = 0.5 × trend_lots
+        # Post-v3.3.5: crash_lots == trend_lots
         trend_lots = realistic_lots("us_momentum", Regime.TREND, sl_pts=70)
         crash_lots = realistic_lots("us_momentum", Regime.CRASH, sl_pts=70)
-        assert crash_lots == pytest.approx(trend_lots * 0.5, rel=0.01)
+        assert crash_lots == pytest.approx(trend_lots, rel=0.01)
 
 
 class TestPnlConversion:
@@ -68,10 +72,11 @@ class TestConstants:
     def test_eur_usd(self):
         assert EUR_USD == 1.08
 
-    def test_multipliers_v3_3_4(self):
+    def test_multipliers_v3_3_5_step_1(self):
+        # v3.3.5 STEP 1: CRASH 0.5 → 1.0 (post 16-kolo adversarial)
         assert GATE18_REGIME_MULTIPLIERS[Regime.TREND] == 1.0
         assert GATE18_REGIME_MULTIPLIERS[Regime.CALM] == 1.0
-        assert GATE18_REGIME_MULTIPLIERS[Regime.CRASH] == 0.5
+        assert GATE18_REGIME_MULTIPLIERS[Regime.CRASH] == 1.0
         assert GATE18_REGIME_MULTIPLIERS[Regime.UNDEFINED] == 0.0
 
     def test_bsc_cap_value(self):

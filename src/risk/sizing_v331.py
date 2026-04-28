@@ -26,9 +26,21 @@ from src.strategy.regime import Regime
 REGIME_RISK_MULTIPLIERS: dict[Regime, float] = {
     Regime.TREND: 1.0,
     Regime.CALM: 0.7,
-    Regime.CRASH: 0.5,
+    Regime.CRASH: 1.0,    # v3.3.5 STEP 1: 0.5 → 1.0 (post 16-kolo adversarial review)
     Regime.UNDEFINED: 0.0,
 }
+
+# v3.3.5 STEP 1 change rationale:
+# - Phase 0 v3.3.4 Gate #18 = 44.98% < 70% threshold = NO-GO
+# - CRASH cell highest expectancy (+44.82 pts), but 0.5× multiplier
+#   limited contribution to portfolio P&L
+# - Boost to 1.0× tested for FTMO compliance: PASS all 4 tests
+#   * Daily Loss worst case: $1,999 (2.0% account, < 5% limit)
+#   * Total Loss: HARD STOP at $7K catches before $10K limit
+#   * Black Swan Cap: 200pt × 13.22 × 1.08 = $2,856 (< $5K cap)
+#   * Margin: 11.5% utilization (< 30% cap)
+# - Expected Gate #18 lift: +10-20pp (Red Team realistic range, NOT +25pp)
+# - Black Swan Cap binding at 23.15 lots, boosted lots 13.22 < cap = no clipping
 
 
 def calculate_lots_v331(
