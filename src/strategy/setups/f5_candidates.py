@@ -1,5 +1,7 @@
-# DEPRECATED v3.3.2.1 — F5 framework dropped after extended ablation (0/8 candidates passed FDR + OOS + sample size). Filter Budget exception accepted (3-4 filters per regime). Module retained for backward-compat with ablation outputs and re-runs against historical specs.
-"""F5 filter candidates pro extended ablation (Exp #12) — DEPRECATED v3.3.2.1.
+# PARTIAL ACTIVE v3.3.4 — F5_CALM=MACD restored in US-MOM CALM (conditional na OOS pass).
+# Other F5 candidates remain implemented but inactive (no production cell uses them).
+# Reference impl pre futures Exp #12 ablation if Pavel decides to retest.
+"""F5 filter candidates — F5_CALM=MACD active v3.3.4, others inactive.
 
 Pro ORB-DAX CRASH regime (4 candidates):
   F5a range_exp     — 5m bar |H-L| > 2× ATR(14) 5m  (Connors-Raschke)

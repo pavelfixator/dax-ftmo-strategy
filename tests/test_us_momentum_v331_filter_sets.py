@@ -9,12 +9,12 @@ class TestV3321FilterSets:
     def test_trend_unchanged_f1234(self):
         assert REGIME_FILTERS[Regime.TREND] == {"F1", "F2", "F3", "F4"}
 
-    def test_calm_drops_f2_no_f5(self):
-        # v3.3.2.1: CALM = F1+F3+F4 (drop F2 paralyzes calm, F5_CALM dropped)
+    def test_calm_drops_f2_includes_f5(self):
+        # v3.3.4: CALM = F1+F3+F4+F5_CALM (drop F2, RESTORED F5_CALM=MACD)
         s = REGIME_FILTERS[Regime.CALM]
-        assert s == {"F1", "F3", "F4"}
+        assert s == {"F1", "F3", "F4", "F5_CALM"}
         assert "F2" not in s
-        assert "F5_CALM" not in s
+        assert "F5_CALM" in s
 
     def test_crash_drops_f1(self):
         # v3.3.2.1: CRASH = F2+F3+F4 (drop F1 — top winner, gap-fill mechanistic)
@@ -33,7 +33,11 @@ class TestFilterCount:
         for r, filters in REGIME_FILTERS.items():
             assert len(filters) <= 4, f"{r} has {len(filters)} filters (> 4)"
 
-    def test_no_f5_anywhere(self):
+    def test_f5_calm_only_in_calm(self):
+        # v3.3.4: F5_CALM restored to CALM regime only
         for r, filters in REGIME_FILTERS.items():
-            for f in filters:
-                assert not f.startswith("F5"), f"{r} still has {f}"
+            f5_filters = [f for f in filters if f.startswith("F5")]
+            if r == Regime.CALM:
+                assert f5_filters == ["F5_CALM"], f"{r} should have F5_CALM"
+            else:
+                assert not f5_filters, f"{r} should NOT have F5 filter, got {f5_filters}"

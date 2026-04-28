@@ -1,25 +1,27 @@
-"""US-Momentum v3.3.2.1 — empirically validated NY Open Continuation.
+"""US-Momentum v3.3.4 — empirically validated NY Open Continuation (post 15-rounds).
 
-Spec: Strategy v3.3.2.1 (post adversarial 12-round design + extended ablation).
+Spec: Strategy v3.3.4 (post 15-round adversarial review).
 
-Data-driven filter sets (post Sekce 5 ablation):
-  TREND: F1 + F2 + F3 + F4              (baseline, 569 trades, +3.3 exp, OOS pass)
-  CALM:  F1 + F3 + F4                   (drop F2 — paralyzes calm per Iter2b)
-  CRASH: F2 + F3 + F4                   (drop F1 — top winner cell, n=182,
-                                          WR 0.53, +44.8 exp, FDR sig + OOS pass.
-                                          Mechanistic: NinjaTrader gap-fill 78%
-                                          probability — D1 close direction blocks
-                                          legitimate mean-reversion long signals.)
+Data-driven filter sets v3.3.4:
+  TREND: F1 + F2 + F3 + F4                (CONDITIONAL DROP per stress test
+                                            v3.3.4: pessimistic 2× incremental
+                                            buffer cost = -0.22 < +0.5 threshold)
+  CALM:  F1 + F3 + F4 + F5_CALM           (RESTORED v3.3.4 — F5_CALM=MACD 3-10
+                                            histogram filter, CONDITIONAL na OOS
+                                            validation per macd_oos_validation.py)
+  CRASH: F2 + F3 + F4                     (drop F1 — top winner cell, n=182,
+                                            WR 0.53, +44.8 exp, FDR sig + OOS pass.
+                                            Mechanistic: NinjaTrader gap-fill 78%
+                                            probability — D1 close direction blocks
+                                            legitimate mean-reversion long signals.)
 
 Filtry:
   F1 Daily Bias  — 3 booleans all-aligned (yest_close vs EMA20D1, vs yest_open, vs day_before_close)
   F2 Pre-US trend — HH/LL series on 15m, 14:00-15:25 CET (DST-aware)
   F3 SP500 corr   — Dukascopy USA500IDXUSD proxy in 15:15-15:20 CET window
   F4 Yest H/L     — current close not breached yesterday's high (LONG) / low (SHORT)
-
-DROPPED v3.3.2.1:
-  F5_CALM         — F5 framework (4 candidates) all failed FDR + OOS + sample
-                    size. Filter Budget exception accepted, max 3-4 filters/regime.
+  F5_CALM (MACD)  — Raschke 3/10 histogram alignment (long: hist > 0; short: hist < 0)
+                    RESTORED v3.3.4 conditional na OOS pass
 
 Time window entry (DST-aware via rules_engine.get_nyse_open_cet):
   Standard: 15:20-16:30 CET
@@ -75,9 +77,9 @@ def f5_calm_macd_aligned(close: pd.Series, direction: str) -> bool:
 
 
 REGIME_FILTERS: dict[Regime, set] = {
-    Regime.TREND:     {"F1", "F2", "F3", "F4"},
-    Regime.CALM:      {"F1", "F3", "F4"},         # F2 dropped (paralyzes CALM)
-    Regime.CRASH:     {"F2", "F3", "F4"},         # F1 dropped (gap-fill mech.)
+    Regime.TREND:     {"F1", "F2", "F3", "F4"},        # CONDITIONAL DROP (v3.3.4 stress test)
+    Regime.CALM:      {"F1", "F3", "F4", "F5_CALM"},   # RESTORED v3.3.4 (MACD)
+    Regime.CRASH:     {"F2", "F3", "F4"},              # F1 drop (gap-fill)
     Regime.UNDEFINED: set(),
 }
 
@@ -202,9 +204,18 @@ class UsMomentumSetupV331(BaseSetup):
                 return None
             filters_met += 1
 
-        # F5_CALM framework DROPPED v3.3.2.1 (0/4 candidates passed FDR/OOS).
-        # Branch unreachable since F5_CALM not in any REGIME_FILTERS set; kept
-        # stub for ablation backward-compat. Custom f5_override is a no-op here.
+        # F5_CALM RESTORED v3.3.4 — Raschke MACD 3/10 histogram filter.
+        if "F5_CALM" in active_filters and "F5_CALM" not in skip:
+            history_5m_close = df_5m.loc[:ts, "close"]
+            if len(history_5m_close) < MACD_SLOW + MACD_SIGNAL + 5:
+                return None
+            if f5_override is not None:
+                ok = f5_override(df_5m.loc[:ts], direction)
+            else:
+                ok = f5_calm_macd_aligned(history_5m_close, direction)
+            if not ok:
+                return None
+            filters_met += 1
 
         # ATR(14) on 15m for SL
         bars_15m = _aggregate_15m(df_5m.loc[:ts])
