@@ -57,6 +57,49 @@ ANALYTICAL — direct subtraction of `delta_cost × n_trades` from baseline P&L
 — NOT re-simulation of the strategy with patched parameter. Re-simulation
 introduces selection-bias artifacts unrelated to the parameter being tested.
 
+## #8 — NEW v3.3.4 (post-bug-fix) — Implementation testing must verify quantitative claims, not just logic
+
+**Context:** Phase 0 v3.3.4 produced Gate #18 = 0.00 % Challenge Success Rate
+("FAIL → NO-GO"). Investigation found the script used a 1-lot proxy for
+P&L conversion (`pnl_pts × 1.0 lot × eur_usd`), not the realistic 6-23 lot
+sizing from Strategy v3.3.x. With realistic sizing applied (1 % account
+risk + regime multipliers + BSC cap), expected P&L is 5-15× higher, which
+should shift Gate #18 verdict materially.
+
+**The 10 existing tests for gate18_block_bootstrap.py verified:**
+- Block bootstrap mechanics (uniform sampling from blocks, distribution stats)
+- Threshold classification (PASS / WARNING / FAIL bands)
+- Edge cases (insufficient days, extreme distributions)
+
+**They did NOT verify:**
+- The unit conversion `pnl_pts → USD` was using realistic lots
+- The P&L magnitudes were physically plausible (pre-fix mean +$436/30d
+  for a strategy generating 1130 trades over 11 years is implausibly low —
+  ~$5/trade — which should have triggered review)
+
+**Rule:** When tests cover a function that converts between units / scales /
+financial quantities, at least one test must assert the OUTPUT MAGNITUDE
+matches a hand-computed expected value, not just "function returns a number"
+or "logic flow is correct".
+
+**Application:** `tests/test_gate18_sizing.py` (NEW) asserts:
+  - Pavel's verbal sanity examples (SL=60 TREND → ~16 lots, etc.)
+  - BSC cap binding behavior
+  - Per-cell defaults match expected magnitudes
+  - Regime multiplier proportionality (CRASH = 0.5 × TREND for same SL)
+
+**Generalized rule for ALL future quantitative scripts:**
+  Required test types:
+  (a) Logic test (does branch X execute when condition Y?) — already standard
+  (b) **Magnitude test (does output X for input Y match expected order of
+      magnitude?)** — was missing in pre-v3.3.4
+  (c) Boundary test (edge cases: zero, negative, infinity, missing data)
+
+Without (b), tests can pass for buggy code that produces *the wrong number*
+of plausible shape.
+
+---
+
 ## #7 — NEW v3.3.4 — Distinct Validation Methods (avoid moving goalposts)
 
 **Context:** v3.3.3 introduced a "Gate #9 split" (separate thresholds for
