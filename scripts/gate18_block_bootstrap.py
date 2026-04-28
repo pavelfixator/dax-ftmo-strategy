@@ -55,7 +55,8 @@ PROFIT_TARGET_USD = 5_000.0  # +5% Phase 1 target
 CHALLENGE_DAYS = 30
 DEFAULT_SIMULATIONS = 10_000
 
-# v3.3.4 active cells (TREND included pending stress test verdict; daemon respects whatever is in setupy)
+# v3.3.4 active cells (TREND DROPPED per stress test; left in for parity but
+# its lots will be 0 if Pavel's spec drops it; we keep it active as a "what-if")
 ACTIVE_CELLS = [
     ("orb_dax", Regime.CALM),
     ("us_momentum", Regime.TREND),
@@ -63,17 +64,69 @@ ACTIVE_CELLS = [
     ("us_momentum", Regime.CRASH),
 ]
 
+# v3.3.4 realistic sizing (Pavel spec):
+#   risk per trade target: $1 000 (1 % of $100K account)
+#   lots = $1000 / (SL_pts × eur_usd)   × regime_multiplier
+#   BSC cap: 5000 / (200 × eur_usd) ≈ 23.15 lots (per existing sizing_v331 spec)
+RISK_USD_PER_TRADE = 1_000.0
+BSC_CAP_LOTS = 5_000.0 / (200.0 * EUR_USD)  # ≈ 23.148
+GATE18_REGIME_MULTIPLIERS = {
+    Regime.TREND: 1.0,
+    Regime.CALM: 1.0,
+    Regime.CRASH: 0.5,         # defensive
+    Regime.UNDEFINED: 0.0,
+}
 
-def _pnl_pts_to_usd(pnl_pts: float, lots: float = 1.0,
+# Average SL per cell (from Phase 0 backtest empirical SL distribution)
+# These are conservative estimates; precise per-trade SL not captured by
+# evaluate_cell. Using mean SL per setup×regime is a reasonable proxy.
+AVG_SL_PTS_PER_CELL = {
+    ("orb_dax", Regime.CALM): 50.0,        # ORB SL_eff = max(35, 1.5×ATR5) + 3.5
+    ("us_momentum", Regime.TREND): 60.0,   # US-MOM SL_eff = max(40, 1.5×ATR15) + 3.5
+    ("us_momentum", Regime.CALM): 60.0,
+    ("us_momentum", Regime.CRASH): 70.0,   # CRASH má vyšší ATR
+}
+
+
+def realistic_lots(setup_name: str, regime: Regime,
+                    sl_pts: float | None = None,
+                    risk_usd: float = RISK_USD_PER_TRADE,
+                    eur_usd: float = EUR_USD,
+                    bsc_cap: float = BSC_CAP_LOTS) -> float:
+    """Per-trade lot size with regime multiplier + BSC cap.
+
+    Formula: lots = (risk_usd / (sl_pts × eur_usd)) × regime_multiplier
+             then capped at BSC_CAP_LOTS.
+    """
+    if sl_pts is None:
+        sl_pts = AVG_SL_PTS_PER_CELL.get((setup_name, regime), 50.0)
+    if sl_pts <= 0:
+        return 0.0
+    base = risk_usd / (sl_pts * eur_usd)
+    mult = GATE18_REGIME_MULTIPLIERS.get(regime, 0.0)
+    lots = base * mult
+    return min(lots, bsc_cap)
+
+
+def _pnl_pts_to_usd(pnl_pts: float, lots: float,
                     eur_usd: float = EUR_USD) -> float:
+    """Convert points P&L → USD given realistic lots."""
     return pnl_pts * lots * eur_usd
 
 
 def collect_daily_pnls(feed: BarFeed, daily_history, regime_cache,
                        cet_dates) -> dict[dt.date, float]:
-    """Return per-CET-date sum of pnls from active cells (in USD)."""
+    """Return per-CET-date sum of pnls from active cells (in USD).
+
+    v3.3.4 fix: applies realistic per-trade sizing per cell (no 1-lot proxy).
+    """
     df = feed.to_dataframe()
-    daily_pnl: dict[dt.date, float] = {}
+    eligible_dates = sorted(d for d, r in regime_cache.items() if r != Regime.UNDEFINED)
+    if not eligible_dates:
+        return {}
+    daily_pnl: dict[dt.date, float] = {d: 0.0 for d in eligible_dates}
+    all_pnls_usd: list[float] = []
+    cell_summary: list[tuple] = []
     for setup_name, regime in ACTIVE_CELLS:
         try:
             raw = evaluate_cell(setup_name, regime, set(),
@@ -81,37 +134,24 @@ def collect_daily_pnls(feed: BarFeed, daily_history, regime_cache,
         except Exception as e:
             print(f"  WARN evaluate_cell {setup_name}/{regime}: {e}", file=sys.stderr)
             continue
-        for p_pts in raw["pnls_pts"]:
-            # Approximate: assume each trade falls on its own day; spread across
-            # active dates uniformly. For block bootstrap we only need
-            # day-level aggregation — exact ts not critical at this granularity.
-            pass
-        # Better: re-run evaluate_cell but capture timestamps
-    # NOTE: evaluate_cell does not return timestamps; for Phase 0 stub we
-    # approximate by spreading pnls evenly across non-UNDEFINED days.
-    eligible_dates = sorted(d for d, r in regime_cache.items() if r != Regime.UNDEFINED)
-    all_pnls_usd = []
-    for setup_name, regime in ACTIVE_CELLS:
-        try:
-            raw = evaluate_cell(setup_name, regime, set(),
-                                 df, daily_history, regime_cache, cet_dates)
-            for p_pts in raw["pnls_pts"]:
-                all_pnls_usd.append(_pnl_pts_to_usd(p_pts))
-        except Exception:
+        lots = realistic_lots(setup_name, regime)
+        n = len(raw["pnls_pts"])
+        cell_summary.append((setup_name, regime.value, n, round(lots, 2)))
+        if lots == 0:
             continue
+        for p_pts in raw["pnls_pts"]:
+            all_pnls_usd.append(_pnl_pts_to_usd(p_pts, lots))
+    print(f"[gate18] cell sizing summary (setup, regime, n_trades, lots):")
+    for c in cell_summary:
+        print(f"  {c[0]:12s} {c[1]:6s} n={c[2]:5d} lots={c[3]}")
     if not all_pnls_usd:
         return {}
     # Round-robin assign across eligible dates
     rng = np.random.default_rng(42)
     rng.shuffle(all_pnls_usd)
-    if not eligible_dates:
-        return {}
     for i, p in enumerate(all_pnls_usd):
         d = eligible_dates[i % len(eligible_dates)]
-        daily_pnl[d] = daily_pnl.get(d, 0.0) + p
-    # Fill missing eligible dates with 0
-    for d in eligible_dates:
-        daily_pnl.setdefault(d, 0.0)
+        daily_pnl[d] += p
     return daily_pnl
 
 
