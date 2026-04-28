@@ -19,14 +19,18 @@ from src.strategy.setups.us_momentum_v331 import (
 # ============================================================
 
 class TestFilterSets:
+    """v3.3.2.1 filter sets per regime."""
+
     def test_trend_uses_f1234(self):
         assert REGIME_FILTERS[Regime.TREND] == {"F1", "F2", "F3", "F4"}
 
-    def test_calm_swaps_f2_for_f5(self):
-        assert REGIME_FILTERS[Regime.CALM] == {"F1", "F3", "F4", "F5_CALM"}
+    def test_calm_drops_f2(self):
+        # v3.3.2.1: CALM = F1+F3+F4 (F2 paralyzes calm, F5 dropped)
+        assert REGIME_FILTERS[Regime.CALM] == {"F1", "F3", "F4"}
 
-    def test_crash_uses_f1_f2_mandatory_plus_f3_f4(self):
-        assert REGIME_FILTERS[Regime.CRASH] == {"F1", "F2", "F3", "F4"}
+    def test_crash_drops_f1(self):
+        # v3.3.2.1: CRASH = F2+F3+F4 (F1 dropped — drop_F1 was top winner)
+        assert REGIME_FILTERS[Regime.CRASH] == {"F2", "F3", "F4"}
 
     def test_undefined_empty(self):
         assert REGIME_FILTERS[Regime.UNDEFINED] == set()

@@ -74,14 +74,16 @@ def _full_session(volume_high=True, range_expansion=False):
 # ============================================================
 
 class TestFilterSets:
-    def test_trend_uses_f1_f2_f3_f4(self):
-        assert REGIME_FILTERS[Regime.TREND] == {"F1", "F2", "F3", "F4"}
+    """v3.3.2.1: ORB-DAX active ONLY in CALM with drop_F3 (F1+F2+F4)."""
 
-    def test_calm_uses_f1_f2_f3_f4(self):
-        assert REGIME_FILTERS[Regime.CALM] == {"F1", "F2", "F3", "F4"}
+    def test_trend_disabled(self):
+        assert REGIME_FILTERS[Regime.TREND] == set()
 
-    def test_crash_uses_f1_f2_f5_crash(self):
-        assert REGIME_FILTERS[Regime.CRASH] == {"F1", "F2", "F5_CRASH"}
+    def test_calm_drop_f3(self):
+        assert REGIME_FILTERS[Regime.CALM] == {"F1", "F2", "F4"}
+
+    def test_crash_disabled(self):
+        assert REGIME_FILTERS[Regime.CRASH] == set()
 
     def test_undefined_empty(self):
         assert REGIME_FILTERS[Regime.UNDEFINED] == set()
@@ -123,24 +125,33 @@ class TestEntryByRegime:
         ts = df.index[-1]
         assert s.check_entry_at(df, daily, ts, Regime.UNDEFINED) is None
 
-    def test_trend_full_filters_pass(self):
+    def test_trend_returns_none_disabled(self):
         s = OrbDaxSetupV331()
         df = _full_session(volume_high=True)
         daily = _daily(bull=True)
         ts = df.index[-1]
-        sig = s.check_entry_at(df, daily, ts, Regime.TREND)
-        assert sig is not None
-        assert sig.direction == "LONG"
-        assert sig.filters_total == 4
-        assert "trend" in sig.setup_name
+        # v3.3.2.1: TREND disabled regardless of bar quality
+        assert s.check_entry_at(df, daily, ts, Regime.TREND) is None
 
-    def test_trend_volume_blocks(self):
+    def test_crash_returns_none_disabled(self):
         s = OrbDaxSetupV331()
+        df = _full_session(range_expansion=True)
+        daily = _daily(bull=True)
+        ts = df.index[-1]
+        # v3.3.2.1: CRASH disabled
+        assert s.check_entry_at(df, daily, ts, Regime.CRASH) is None
+
+    def test_calm_drop_f3_passes_without_volume_check(self):
+        s = OrbDaxSetupV331()
+        # Volume LOW — old F3 would block, v3.3.2.1 doesn't check
         df = _full_session(volume_high=False)
         daily = _daily(bull=True)
         ts = df.index[-1]
-        sig = s.check_entry_at(df, daily, ts, Regime.TREND)
-        assert sig is None
+        sig = s.check_entry_at(df, daily, ts, Regime.CALM)
+        assert sig is not None
+        assert sig.direction == "LONG"
+        assert sig.filters_total == 3  # F1+F2+F4
+        assert "calm" in sig.setup_name
 
     def test_calm_full_filters_pass(self):
         s = OrbDaxSetupV331()
@@ -150,44 +161,6 @@ class TestEntryByRegime:
         sig = s.check_entry_at(df, daily, ts, Regime.CALM)
         assert sig is not None
         assert "calm" in sig.setup_name
-
-    def test_crash_passes_with_range_expansion(self):
-        s = OrbDaxSetupV331()
-        df = _full_session(range_expansion=True)
-        daily = _daily(bull=True)
-        ts = df.index[-1]
-        sig = s.check_entry_at(df, daily, ts, Regime.CRASH)
-        assert sig is not None
-        assert sig.filters_total == 3
-        assert "crash" in sig.setup_name
-
-    def test_crash_blocks_without_range_expansion(self):
-        s = OrbDaxSetupV331()
-        df = _full_session(range_expansion=False)  # tight range bar
-        daily = _daily(bull=True)
-        ts = df.index[-1]
-        sig = s.check_entry_at(df, daily, ts, Regime.CRASH)
-        assert sig is None  # F5_CRASH fails
-
-    def test_crash_blocks_without_daily_bias(self):
-        s = OrbDaxSetupV331()
-        df = _full_session(range_expansion=True)
-        # Construct daily history s explicitne non-aligned bias:
-        # yest_close > EMA20D1 (bullish #1) but yest_close < yest_open (bearish day) → no all-3 alignment
-        idx = [dt.date(2020, 1, 12) - dt.timedelta(days=i) for i in range(25)][::-1]
-        closes = np.full(25, 13000.0)
-        opens = np.full(25, 12990.0)
-        # Last row: bullish vs ema (close > 13000 average) but red day (close < open)
-        closes[-1] = 13050.0
-        opens[-1] = 13080.0  # red day
-        daily_mix = pd.DataFrame({
-            "open": opens, "high": np.maximum(opens, closes) + 5,
-            "low": np.minimum(opens, closes) - 5, "close": closes,
-            "volume": [1000.0] * 25,
-        }, index=pd.to_datetime(idx))
-        ts = df.index[-1]
-        sig = s.check_entry_at(df, daily_mix, ts, Regime.CRASH)
-        assert sig is None  # F1 requires all 3 booleans aligned
 
 
 class TestSLTPLogic:

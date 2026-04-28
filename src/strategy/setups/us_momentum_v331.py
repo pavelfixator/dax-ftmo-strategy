@@ -1,26 +1,31 @@
-"""US-Momentum v3.3.1 — regime-aware NY Open Continuation.
+"""US-Momentum v3.3.2.1 — empirically validated NY Open Continuation.
 
-Spec: Strategy v3.3.1 §2.4 + Pavel hybrid plan + adversarial 9-kol design.
+Spec: Strategy v3.3.2.1 (post adversarial 12-round design + extended ablation).
 
-Filter sets per regime (defaults pre-ablation):
-  TREND: F1 + F2 + F3 + F4
-  CALM:  F1 + F3 + F4 + F5_CALM    (F2 pre-US trend skipped — calm = no clear pre-trend)
-  CRASH: F1 MANDATORY + F2 MANDATORY + F3 + F4
+Data-driven filter sets (post Sekce 5 ablation):
+  TREND: F1 + F2 + F3 + F4              (baseline, 569 trades, +3.3 exp, OOS pass)
+  CALM:  F1 + F3 + F4                   (drop F2 — paralyzes calm per Iter2b)
+  CRASH: F2 + F3 + F4                   (drop F1 — top winner cell, n=182,
+                                          WR 0.53, +44.8 exp, FDR sig + OOS pass.
+                                          Mechanistic: NinjaTrader gap-fill 78%
+                                          probability — D1 close direction blocks
+                                          legitimate mean-reversion long signals.)
 
 Filtry:
-  F1 Daily Bias  — same as ORB-DAX (3 booleans all-aligned)
+  F1 Daily Bias  — 3 booleans all-aligned (yest_close vs EMA20D1, vs yest_open, vs day_before_close)
   F2 Pre-US trend — HH/LL series on 15m, 14:00-15:25 CET (DST-aware)
   F3 SP500 corr   — Dukascopy USA500IDXUSD proxy in 15:15-15:20 CET window
   F4 Yest H/L     — current close not breached yesterday's high (LONG) / low (SHORT)
-  F5_CALM (a)     — MACD 3-10 histogram (Raschke 3/10): MACD line > signal line (UP)
-                    confirms momentum without strong trend; default candidate
-                    pre-Exp #12 winner.
+
+DROPPED v3.3.2.1:
+  F5_CALM         — F5 framework (4 candidates) all failed FDR + OOS + sample
+                    size. Filter Budget exception accepted, max 3-4 filters/regime.
 
 Time window entry (DST-aware via rules_engine.get_nyse_open_cet):
-  Standard: 15:20-16:30 CET (10 min before NYSE open + 60 min after)
+  Standard: 15:20-16:30 CET
   US-EU DST gap: 14:20-15:30 CET
 
-Spec §2.4.
+Spec v3.3.2.1.
 """
 from __future__ import annotations
 
@@ -71,8 +76,8 @@ def f5_calm_macd_aligned(close: pd.Series, direction: str) -> bool:
 
 REGIME_FILTERS: dict[Regime, set] = {
     Regime.TREND:     {"F1", "F2", "F3", "F4"},
-    Regime.CALM:      {"F1", "F3", "F4", "F5_CALM"},  # F2 skipped, F5_CALM placeholder
-    Regime.CRASH:     {"F1", "F2", "F3", "F4"},        # F1+F2 both mandatory
+    Regime.CALM:      {"F1", "F3", "F4"},         # F2 dropped (paralyzes CALM)
+    Regime.CRASH:     {"F2", "F3", "F4"},         # F1 dropped (gap-fill mech.)
     Regime.UNDEFINED: set(),
 }
 
@@ -195,18 +200,9 @@ class UsMomentumSetupV331(BaseSetup):
                 return None
             filters_met += 1
 
-        # F5_CALM — default MACD 3-10 alignment, or override
-        if "F5_CALM" in active_filters and "F5_CALM" not in skip:
-            history_5m_close = df_5m.loc[:ts, "close"]
-            if len(history_5m_close) < MACD_SLOW + MACD_SIGNAL + 5:
-                return None
-            if f5_override is not None:
-                ok = f5_override(df_5m.loc[:ts], direction)
-            else:
-                ok = f5_calm_macd_aligned(history_5m_close, direction)
-            if not ok:
-                return None
-            filters_met += 1
+        # F5_CALM framework DROPPED v3.3.2.1 (0/4 candidates passed FDR/OOS).
+        # Branch unreachable since F5_CALM not in any REGIME_FILTERS set; kept
+        # stub for ablation backward-compat. Custom f5_override is a no-op here.
 
         # ATR(14) on 15m for SL
         bars_15m = _aggregate_15m(df_5m.loc[:ts])

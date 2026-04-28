@@ -1,28 +1,31 @@
-"""ORB-DAX v3.3.1 — regime-aware Trend Open Range Breakout.
+"""ORB-DAX v3.3.2.1 — CALM-only Trend Open Range Breakout.
 
-Spec: Strategy v3.3.1 §2.4 + Pavel hybrid plan + adversarial 9-kol design.
+Spec: Strategy v3.3.2.1 (post adversarial 12-round design + ablation).
 
-Key differences vs v3.2 (orb_dax.py — DEPRECATED):
-  - regime parametr: TREND / CALM / CRASH / UNDEFINED
-  - filter sets per regime (defaults pre-ablation):
-      TREND: F1 + F2 + F3 + F4
-      CALM:  F1 + F2 + F3 + F4
-      CRASH: F1 MANDATORY + F2 + F5_CRASH placeholder
-  - F5_CRASH default: F5a Connors-Raschke range expansion
-      (5m bar |H-L| > 2× ATR(14) 5m). To be replaced by Exp #12 winner.
-  - UNDEFINED → return None (no trade)
+CALM-only scope (data-driven post Sekce 5):
+  - Extended ablation 11 yrs / 44 cells: ORB-DAX TREND baseline = 7 trades, 0% WR
+    (dead setup). ORB-DAX CRASH = 0/10 PRIMARY cells (insufficient sample).
+  - Only ORB-DAX CALM drop_F3 winner: 122 trades, 34% WR, +18.8 exp,
+    Sharpe 3.6, FDR sig, OOS pass.
+  - v3.3.2.1: ORB-DAX active ONLY in CALM regime, default config = drop_F3
+    (filters F1 + F2 + F4, F3 volume removed).
 
-Filtry (definice):
+Filtry (CALM only):
   F1 Daily Bias  — 3 booleans all-true (yest_close vs EMA20D1, vs yest_open, vs day_before_close)
   F2 ORB15       — high/low prvních 3 × 5m barů 09:00-09:15 CET, range >= 10 pts
-  F3 Volume      — bar volume > 1.5× avg volume prvních 3 ORB barů
   F4 ATR rel     — ATR(14) 5m at 09:00-09:15 > 0.7× rolling 20-day median
-  F5_CRASH (a)   — current bar |high - low| > 2.0× ATR(14) 5m (range expansion)
 
-Entry / SL / TP (stejné jako v3.2):
-  Entry: 5m close baru breakout above ORB high (LONG) / below ORB low (SHORT)
-  SL_raw = max(35 pts, 1.5 × ATR(14) 5m)  →  SL_eff = SL_raw + 3.5 (spread+slip)
-  TP1   = 2 × ORB range (RRR 1:2), scale-out 50 % handled by engine
+DROPPED v3.3.2.1:
+  F3 Volume      — drop_F3 winner cell: F3 was binding in CALM (1.5× threshold
+                    paralyzed legitimate setupy)
+  F5_CRASH       — F5 framework dropped (0/8 candidates passed FDR + OOS)
+  TREND regime   — disabled (dead setup)
+  CRASH regime   — disabled (insufficient sample)
+
+Entry / SL / TP (unchanged):
+  Entry: 5m close breakout above/below ORB
+  SL_raw = max(35 pts, 1.5 × ATR(14) 5m)  →  SL_eff = SL_raw + 3.5
+  TP1   = 2 × ORB range (RRR 1:2)
   Time window entry: 09:15-10:00 CET
 """
 from __future__ import annotations
@@ -54,9 +57,9 @@ def f5_crash_range_expansion(bar: pd.Series, atr5: float) -> bool:
 
 
 REGIME_FILTERS: dict[Regime, set] = {
-    Regime.TREND:     {"F1", "F2", "F3", "F4"},
-    Regime.CALM:      {"F1", "F2", "F3", "F4"},
-    Regime.CRASH:     {"F1", "F2", "F5_CRASH"},  # F1 + F2 mandatory, F5_CRASH replaces F3+F4
+    Regime.TREND:     set(),                # DISABLED v3.3.2.1
+    Regime.CALM:      {"F1", "F2", "F4"},   # drop F3 winner (no volume filter)
+    Regime.CRASH:     set(),                # DISABLED v3.3.2.1
     Regime.UNDEFINED: set(),
 }
 
@@ -107,7 +110,8 @@ class OrbDaxSetupV331(BaseSetup):
             UNDEFINED regime → vždy None.
         """
         skip = skip_filters or set()
-        if regime == Regime.UNDEFINED:
+        # v3.3.2.1 regime gate: ORB-DAX active ONLY in CALM
+        if regime != Regime.CALM:
             return None
         active_filters = REGIME_FILTERS[regime]
         if ts not in session_5m.index:
@@ -154,7 +158,8 @@ class OrbDaxSetupV331(BaseSetup):
         filters_met = 2 if bias_known else 1
         filters_total = len(active_filters)
 
-        # F3 Volume confirm
+        # F3 Volume confirm — DROPPED v3.3.2.1 (drop_F3 was winner)
+        # Block kept only when caller explicitly re-enables via custom skip semantics.
         if "F3" in active_filters and "F3" not in skip:
             if float(bar["volume"]) < VOLUME_THRESHOLD * orb.orb_avg_volume:
                 return None
@@ -169,18 +174,12 @@ class OrbDaxSetupV331(BaseSetup):
                 filters_met += 1
             # If f4 is None (insufficient history) → don't block, don't count
 
-        # F5_CRASH (default range expansion or override)
+        # ATR for SL — keep computation (needed for SL even without F5_CRASH)
         a5_series = atr(bars_up_to, 14).dropna()
         a5 = float(a5_series.iloc[-1]) if not a5_series.empty else None
-        if "F5_CRASH" in active_filters and "F5_CRASH" not in skip:
-            if f5_override is not None:
-                ok = f5_override(bar, history_5m if history_5m is not None else bars_up_to,
-                                  direction)
-            else:
-                ok = f5_crash_range_expansion(bar, a5)
-            if not ok:
-                return None
-            filters_met += 1
+        # F5_CRASH framework DROPPED v3.3.2.1 (0/4 candidates passed FDR/OOS).
+        # CRASH regime is disabled, so this branch is unreachable; kept stub
+        # for ablation backward-compat (ignored if F5_CRASH not in active set).
 
         entry = close
         sl = self.get_sl(entry, direction, {"atr5_at_entry": a5})
