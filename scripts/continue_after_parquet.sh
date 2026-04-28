@@ -35,13 +35,13 @@ log "continuation watcher start"
 
 # Phase 2: wait for extended parquet
 log "Phase 2: waiting for extended parquet at $PARQUET"
-DEADLINE=$(( $(date +%s) + 1800 ))   # 30 min budget
+DEADLINE=$(( $(date +%s) + 5400 ))   # 90 min budget (full re-run from cache)
 while [ ! -f "$PARQUET" ]; do
     if [ $(date +%s) -gt $DEADLINE ]; then
-        log "extended parquet build timeout (30 min)"
+        log "extended parquet build timeout (90 min)"
         exit 1
     fi
-    sleep 20
+    sleep 30
 done
 SIZE=$(stat -c %s "$PARQUET" 2>/dev/null || echo 0)
 log "extended parquet ready: $SIZE bytes"
