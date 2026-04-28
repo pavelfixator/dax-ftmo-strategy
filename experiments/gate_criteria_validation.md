@@ -31,7 +31,7 @@ Per-cell:
 - us_momentum/CRASH: PF=2.16 WR=52.75% R-mult=1.93 → PASS (OK)
 
 ## Gate #18 Challenge Success Rate (v3.3.4 NEW): **FAIL**
-- success rate: 0.0% (threshold ≥70% PASS, ≥60% WARNING)
+- success rate: 45.0% (threshold ≥70% PASS, ≥60% WARNING)
 
 ## Gates pending separate computations
 - #2 WR aggregate / #3 PF aggregate / #5 Sortino / #11 close framework / #12 swap coverage / #13 BSC audit / #16 ablation positive / #17 classifier accuracy

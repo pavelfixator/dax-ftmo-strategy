@@ -10,18 +10,18 @@
 - profit target: $5,000
 
 ## Result
-- Successes: 0
-- success_rate: **0.00%**
+- Successes: 4,498
+- success_rate: **44.98%**
 
 ## Final P&L distribution (USD)
 | stat | value |
 |---|---:|
-| mean | $+436 |
-| median | $+401 |
-| p5 | $-246 |
-| p25 | $+126 |
-| p75 | $+719 |
-| p95 | $+1239 |
+| mean | $+4619 |
+| median | $+4212 |
+| p5 | $-3094 |
+| p25 | $+443 |
+| p75 | $+7892 |
+| p95 | $+14921 |
 
 ## Acceptance (v3.3.4)
 - ≥ 70 % → 🟢 Phase 1 PROCEED
