@@ -1,7 +1,13 @@
-# Phase 0 Final Summary — v3.3.4 (post-15-rounds adversarial)
+# Phase 0 Final Summary — v3.3.4 (post-15-rounds adversarial + sizing fix)
 
-**Datum:** 2026-04-28
-**Verdikt:** 🔴 **NO-GO** (Gate #18 FAIL, return to v3.3.5 redesign)
+**Datum:** 2026-04-28 (updated post-sizing-fix re-run)
+**Verdikt:** 🔴 **NO-GO** (Gate #18 = 44.98 %, threshold 70 %; <60 % = automatic NO-GO)
+
+**Sizing bug correction history:**
+- v1 (1-lot proxy bug): success_rate 0.00 %, mean +$436/30d, p95 +$1 239
+- **v2 (realistic sizing per v3.3.4 spec): success_rate 44.98 %, mean +$4 619, p95 +$14 921**
+- Bug fix delta: +44.98 percentage points; P&L magnitudes 5-15× higher
+- Strategy má reálný edge (mean ≈ Phase 1 target), ale variance + CRASH-dep. → 45 % insufficient pre 70 % threshold
 
 ---
 
@@ -9,7 +15,7 @@
 
 | Layer | Result |
 |---|---|
-| **Gate #18 (NEW v3.3.4)** | 🔴 **0.00 % Challenge Success Rate** (10 000 sims, threshold 70 %) |
+| **Gate #18 v2 (post-fix)** | 🔴 **44.98 % Challenge Success** (10 K sims; threshold 70 %; bug fix +45 pp from 0 %) |
 | MACD OOS validation | ⚠️ MARGINAL (ratio 62.6 %) → revert s WARNING |
 | TREND stress test (analytical) | 🔴 DROP US-MOM TREND (pessimistic 2× → -0.22 < +0.5) |
 | Phase 0 Final | **🔴 NO-GO → v3.3.5 redesign** |
@@ -42,7 +48,7 @@
 | 15 | Uniform v3.3.4 (PF + WR/R-mult) | ❌ FAIL | TREND fail PF; CALM fail PF |
 | 16 | Ablation positive | ⚠️ MISSING | not explicitly run |
 | 17 | Classifier accuracy ≥75 % | ⚠️ MISSING | regime cache built, per-event acc not measured |
-| **18** | **Challenge Success ≥70 %** | 🔴 **FAIL** | **0.00 %** |
+| **18** | **Challenge Success ≥70 %** | 🔴 **FAIL** | **44.98 %** (post-sizing-fix; was 0.00 % bug) |
 
 **Aggregate: 6 PASS / 6 FAIL / 1 MIXED / 5 MISSING**
 
