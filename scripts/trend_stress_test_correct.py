@@ -105,7 +105,7 @@ def main() -> int:
     rows = [project(baseline, mult) | {"label": label} for label, mult in SCENARIOS]
     verdict = classify(rows)
     print()
-    print(f"{'scenario':22s} {'mult':>5s} {'Δbuffer':>8s} {'new_buffer':>11s} {'projected':>11s}")
+    print(f"{'scenario':22s} {'mult':>5s} {'d_buf':>8s} {'new_buffer':>11s} {'projected':>11s}")
     for r in rows:
         print(f"{r['label']:22s} {r['multiplier']:>5.1f} "
               f"{r['delta_buffer']:>+8.2f} {r['buffer']:>11.2f} {r['projected_exp_pts']:>+11.2f}")
