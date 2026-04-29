@@ -97,7 +97,7 @@ def _label_ema_slope(slope: float) -> str:
 
 
 def classify_regime_raw(signals: RegimeSignals) -> Regime:
-    """Composite mapping 3 labels → Regime.
+    """Composite mapping 3 labels → Regime (2/3 multi-signal consensus baseline).
 
     Priority:
       1. HIGH vol + DOWN dir → CRASH (panic, even moderate ADX)
@@ -115,6 +115,62 @@ def classify_regime_raw(signals: RegimeSignals) -> Regime:
     if adx_l == "WEAK" and vol == "LOW":
         return Regime.CALM
     return Regime.UNDEFINED
+
+
+def classify_regime_consensus_v331_step3(vol_signal: str,
+                                           trend_signal: str,
+                                           direction_signal: str) -> Regime:
+    """v3.3.5 STEP 3: Loosened consensus 1/3 (single-signal classifier).
+
+    Rationale:
+      - Phase 0 STEP 2 Gate #18 = 61.84% (60-69% band, STEP 3 needed)
+      - HARD STOP = 9.05% TIGHT (0.37 pp margin) → frequency-only constraint
+      - 65% UNDEFINED days produced low trade-eligible day rates
+
+    Trade-off:
+      - Higher frequency: ~64-75% regime classification accuracy
+        (vs 81-85% with 2/3 consensus, per Volatility Box research)
+      - More trade-eligible days, but higher noise on ambiguous days
+
+    HARD CONSTRAINT (per Princip #9 empirical evidence):
+      - NO risk multiplier changes (frequency-only)
+      - Per-trade exposure UNCHANGED from STEP 2
+      - HARD STOP must remain < 10% (currently 9.05% TIGHT)
+
+    Empirical scaling: HARD STOP ~k^3.58 with risk multiplier
+    Linear extrapolation underestimates by factor ~1.8x.
+
+    Priority order:
+      1. Instant CRASH preserved (panic protection)
+      2. STRONG trend → TREND
+      3. LOW vol + non-STRONG trend → CALM
+      4. UP/DOWN direction + MODERATE trend → TREND/CALM by direction
+      5. else → UNDEFINED (last resort, fewer days expected vs 2/3)
+    """
+    # Instant CRASH preserved (panic protection — same as 2/3 baseline)
+    if vol_signal == "HIGH" and direction_signal == "DOWN":
+        return Regime.CRASH
+
+    # 1/3 consensus: any single signal alignment
+    if trend_signal == "STRONG":
+        return Regime.TREND
+    if vol_signal == "LOW" and trend_signal != "STRONG":
+        return Regime.CALM
+    if direction_signal in ("UP", "DOWN") and trend_signal == "MODERATE":
+        return Regime.TREND if direction_signal == "UP" else Regime.CALM
+    return Regime.UNDEFINED
+
+
+def classify_regime_step3(signals: RegimeSignals) -> Regime:
+    """Convenience wrapper: classify_regime_consensus_v331_step3 with RegimeSignals.
+
+    Equivalent to:
+        classify_regime_consensus_v331_step3(
+            signals.atr_pct_label, signals.adx_h4_label, signals.ema_slope_label)
+    """
+    return classify_regime_consensus_v331_step3(
+        signals.atr_pct_label, signals.adx_h4_label, signals.ema_slope_label
+    )
 
 
 def derive_signals_from_market_data(daily_df: pd.DataFrame,
