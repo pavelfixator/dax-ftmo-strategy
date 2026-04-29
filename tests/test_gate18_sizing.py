@@ -13,44 +13,45 @@ from src.strategy.regime import Regime
 
 class TestRealisticLots:
     def test_pavel_example_sl60_trend(self):
-        # SL=60, TREND mult 1.0: 1000/(60×1.08)×1.0 = 15.43
-        assert realistic_lots("us_momentum", Regime.TREND, sl_pts=60) == pytest.approx(15.43, abs=0.01)
+        # v3.3.5 STEP 2: SL=60, TREND mult 1.0: 1250/(60×1.08)×1.0 = 19.29
+        # (STEP 1 historical was 15.43; see phase0_step1_report.md)
+        assert realistic_lots("us_momentum", Regime.TREND, sl_pts=60) == pytest.approx(19.29, abs=0.01)
 
-    def test_pavel_example_sl50_crash_v3_3_5_step_1(self):
-        # v3.3.5 STEP 1: CRASH mult 0.5 → 1.0
-        # SL=50, CRASH mult 1.0: 1000/(50×1.08)×1.0 = 18.52
-        assert realistic_lots("us_momentum", Regime.CRASH, sl_pts=50) == pytest.approx(18.52, abs=0.01)
+    def test_pavel_example_sl50_crash_v3_3_5_step_2(self):
+        # v3.3.5 STEP 2: CRASH mult 1.0 (kept) × $1250 base risk
+        # SL=50, CRASH mult 1.0: 1250/(50×1.08)×1.0 = 23.148 → BSC BINDING
+        # (STEP 1 historical was 18.52; see phase0_step1_report.md)
+        assert realistic_lots("us_momentum", Regime.CRASH, sl_pts=50) == pytest.approx(BSC_CAP_LOTS, abs=0.01)
 
     def test_pavel_example_sl80_calm(self):
-        # SL=80, CALM mult 1.0: 1000/(80×1.08)×1.0 = 11.57
-        assert realistic_lots("us_momentum", Regime.CALM, sl_pts=80) == pytest.approx(11.57, abs=0.01)
+        # v3.3.5 STEP 2: SL=80, CALM mult 1.0: 1250/(80×1.08)×1.0 = 14.47
+        assert realistic_lots("us_momentum", Regime.CALM, sl_pts=80) == pytest.approx(14.47, abs=0.01)
 
     def test_orb_dax_calm_uses_avg_sl(self):
-        # No sl_pts given → uses AVG_SL[orb_dax,CALM]=50
-        # 1000/(50×1.08)×1.0 = 18.52, < BSC cap 23.15
-        assert realistic_lots("orb_dax", Regime.CALM) == pytest.approx(18.52, abs=0.01)
+        # v3.3.5 STEP 2: AVG_SL[orb_dax,CALM]=50, mult 1.0
+        # 1250/(50×1.08)×1.0 = 23.148 → BSC BINDING (saturation per POZNÁMKA #1)
+        assert realistic_lots("orb_dax", Regime.CALM) == pytest.approx(BSC_CAP_LOTS, abs=0.01)
 
     def test_undefined_returns_zero(self):
         assert realistic_lots("orb_dax", Regime.CALM, sl_pts=50) > 0
         # UNDEFINED mult is 0 → 0 lots
-        # Need to fake setup that won't get default sizing — use unknown setup
         assert realistic_lots("anything", Regime.UNDEFINED, sl_pts=50) == 0.0
 
     def test_bsc_cap_applied_for_tight_sl(self):
-        # SL=10 → 1000/(10×1.08)×1.0 = 92.59, capped to BSC ≈ 23.15
+        # v3.3.5 STEP 2: SL=10 → 1250/(10×1.08)×1.0 = 115.74, capped to BSC ≈ 23.15
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=10) == pytest.approx(BSC_CAP_LOTS, abs=0.01)
 
     def test_zero_or_negative_sl_returns_zero(self):
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=0) == 0.0
         assert realistic_lots("us_momentum", Regime.TREND, sl_pts=-5) == 0.0
 
-    def test_crash_matches_trend_v3_3_5_step_1(self):
-        # v3.3.5 STEP 1: CRASH mult 0.5 → 1.0 → matches TREND magnitude
-        # Pre-v3.3.5: crash_lots = 0.5 × trend_lots
-        # Post-v3.3.5: crash_lots == trend_lots
+    def test_crash_matches_trend_v3_3_5_step_2(self):
+        # v3.3.5 STEP 2: CRASH mult 1.0 (kept from STEP 1) → matches TREND magnitude
+        # SL=70 → 1250/(70×1.08)×1.0 = 16.53 (below BSC, both standard-bound)
         trend_lots = realistic_lots("us_momentum", Regime.TREND, sl_pts=70)
         crash_lots = realistic_lots("us_momentum", Regime.CRASH, sl_pts=70)
         assert crash_lots == pytest.approx(trend_lots, rel=0.01)
+        assert 16.0 <= crash_lots <= 17.0  # STEP 2 production value
 
 
 class TestPnlConversion:
@@ -66,14 +67,16 @@ class TestPnlConversion:
 
 
 class TestConstants:
-    def test_risk_per_trade_1pct(self):
-        assert RISK_USD_PER_TRADE == 1_000.0  # 1% of $100K account
+    def test_risk_per_trade_v3_3_5_step_2(self):
+        # v3.3.5 STEP 2: 1% → 1.25% of $100K account
+        # (mirror of risk_manager.RISK_TABLE[("A", "normal")] = 1250)
+        assert RISK_USD_PER_TRADE == 1_250.0
 
     def test_eur_usd(self):
         assert EUR_USD == 1.08
 
-    def test_multipliers_v3_3_5_step_1(self):
-        # v3.3.5 STEP 1: CRASH 0.5 → 1.0 (post 16-kolo adversarial)
+    def test_multipliers_v3_3_5_step_2(self):
+        # v3.3.5 STEP 2: same multipliers as STEP 1 (only base risk uplift)
         assert GATE18_REGIME_MULTIPLIERS[Regime.TREND] == 1.0
         assert GATE18_REGIME_MULTIPLIERS[Regime.CALM] == 1.0
         assert GATE18_REGIME_MULTIPLIERS[Regime.CRASH] == 1.0

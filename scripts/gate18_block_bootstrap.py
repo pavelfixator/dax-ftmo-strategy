@@ -64,11 +64,17 @@ ACTIVE_CELLS = [
     ("us_momentum", Regime.CRASH),
 ]
 
-# v3.3.4 realistic sizing (Pavel spec):
-#   risk per trade target: $1 000 (1 % of $100K account)
-#   lots = $1000 / (SL_pts × eur_usd)   × regime_multiplier
+# v3.3.5 STEP 2 realistic sizing (mirror risk_manager.RISK_TABLE A_normal=1250):
+#   risk per trade target: $1 250 (1.25 % of $100K account; was $1 000 v3.3.5 STEP 1)
+#   lots = $1250 / (SL_pts × eur_usd)   × regime_multiplier
 #   BSC cap: 5000 / (200 × eur_usd) ≈ 23.15 lots (per existing sizing_v331 spec)
-RISK_USD_PER_TRADE = 1_000.0
+#
+# v3.3.5 STEP 2 expected lots (matches sizing_v331 production):
+#   ORB-DAX CALM (SL=50): 1250/(50*1.08)*1.0 = 23.15 → BSC BINDING (saturation)
+#   US-MOM TREND (SL=60): 1250/(60*1.08)*1.0 = 19.29 (DISABLED in active set anyway)
+#   US-MOM CALM (SL=60):  1250/(60*1.08)*1.0 = 19.29
+#   US-MOM CRASH (SL=70): 1250/(70*1.08)*1.0 = 16.53
+RISK_USD_PER_TRADE = 1_250.0
 BSC_CAP_LOTS = 5_000.0 / (200.0 * EUR_USD)  # ≈ 23.148
 GATE18_REGIME_MULTIPLIERS = {
     Regime.TREND: 1.0,
