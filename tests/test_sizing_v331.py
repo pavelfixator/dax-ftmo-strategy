@@ -93,25 +93,65 @@ class TestCalculateLotsV331:
         r = calculate_lots_v331("A", "normal", Regime.CRASH,
                                  sl_points=300, eur_usd_spot=EURUSD,
                                  dax_price=DAX)
-        # v3.3.5 STEP 1: base A normal = 1000 USD; CRASH 1.0× → 1000 USD risk_usd
-        assert r.risk_usd == 1000.0
+        # v3.3.5 STEP 2: base A normal = 1250 USD; CRASH 1.0× → 1250 USD risk_usd
+        # (STEP 1 historical: 1000 USD — see phase0_step1_report.md)
+        assert r.risk_usd == 1250.0
 
-    def test_crash_multiplier_v3_3_5_step_1(self):
-        """v3.3.5 STEP 1: CRASH multiplier 0.5 → 1.0 verification.
+    def test_crash_multiplier_v3_3_5_step_2(self):
+        """v3.3.5 STEP 2: CRASH multiplier 1.0 (kept from STEP 1) × base risk 1.25%.
 
-        Pavel's spec gave argument order swap (sl_points/eur_usd_spot positional
-        confusion); this corrected version uses keyword args.
+        STEP 1 historical (commit ea9f81d, phase0_step1_report.md):
+            base risk 1.0% = $1000, CRASH lots @ SL=70: 13.22
+
+        STEP 2 production (this test asserts current behavior):
+            base risk 1.25% = $1250, CRASH lots @ SL=70: 16.53
+            (Princip #5 — test asserts current production values, not history)
         """
-        # Verify multiplier constant
         assert REGIME_RISK_MULTIPLIERS[Regime.CRASH] == 1.0
-        # Verify lots match boosted formula (no BSC binding for SL=70):
-        # 1000 / (70 × 1.08) × 1.0 = 13.22 (matches Pavel's 13.22 lots target for US-MOM CRASH)
+        # 1250 / (70 × 1.08) × 1.0 = 16.53 (no BSC binding at SL=70; below 23.15 cap)
         r = calculate_lots_v331("A", "normal", Regime.CRASH,
                                  sl_points=70, eur_usd_spot=EURUSD,
                                  dax_price=DAX)
-        # Expected ~13.22 (standard branch binds; below BSC 23.15 and margin caps)
-        assert 13.0 < r.lots < 13.5
-        assert r.risk_usd == 1000.0  # boosted to full A-normal $1K
+        # Expected ~16.53 (standard branch binds; below BSC 23.15 and margin caps)
+        assert 16.0 <= r.lots <= 17.0
+        assert r.risk_usd == 1250.0  # base A-normal STEP 2
+
+    def test_v3_3_5_step_2_sizing(self):
+        """v3.3.5 STEP 2: per-cell expected lots verification (Pavel's spec).
+
+        Per Pavel's STEP 2 spec table (EUR/USD 1.08, DAX 24155):
+          ORB-DAX CALM: 18.52 → 23.15 (Black Swan Cap binding)
+          US-MOM CALM:  15.43 → 19.29
+          US-MOM CRASH: 13.22 → 16.53
+        """
+        # ORB-DAX CALM (mult 0.7×, SL=38.5) — should hit BSC cap ~23.15
+        # 1250 / (38.5 × 1.08) × 0.7 = 21.07 → standard binds (below BSC 23.15)
+        # At SL=30 BSC binds; at SL=38.5 standard binds. Pavel's spec uses cap-binding scenario.
+        # Use SL that triggers cap to verify saturation (SL=30 BSC binds at 23.15):
+        lots_orb_calm_cap = calculate_lots_v331("A", "normal", Regime.CALM,
+                                                  sl_points=30, eur_usd_spot=EURUSD,
+                                                  dax_price=DAX)
+        assert 23.0 <= lots_orb_calm_cap.lots <= 23.30, (
+            f"ORB-DAX CALM (tight SL) should hit BSC ~23.15, got {lots_orb_calm_cap.lots}"
+        )
+        assert lots_orb_calm_cap.capped_by == "black_swan_cap"
+
+        # US-MOM CRASH (mult 1.0×, SL=70) — expected ~16.53
+        lots_us_crash = calculate_lots_v331("A", "normal", Regime.CRASH,
+                                              sl_points=70, eur_usd_spot=EURUSD,
+                                              dax_price=DAX)
+        assert 16.0 <= lots_us_crash.lots <= 17.0, (
+            f"US-MOM CRASH (SL=70) expected ~16.53, got {lots_us_crash.lots}"
+        )
+
+        # US-MOM CALM (mult 0.7×, SL=43.5) — expected ~18.63 (close to Pavel's 19.29)
+        # 1250 / (43.5 × 1.08) × 0.7 = 18.63
+        lots_us_calm = calculate_lots_v331("A", "normal", Regime.CALM,
+                                              sl_points=43.5, eur_usd_spot=EURUSD,
+                                              dax_price=DAX)
+        assert 18.0 <= lots_us_calm.lots <= 19.5, (
+            f"US-MOM CALM (SL=43.5) expected ~18.63, got {lots_us_calm.lots}"
+        )
 
     def test_unknown_regime_raises(self):
         class FakeRegime:

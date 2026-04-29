@@ -12,15 +12,16 @@ Risk state je discrete:
     warning — cumulative DD ≤ −5000 USD (L1 trigger)
     disabled — L2 (cumulative ≤ −7000), no new positions
 
-Risk table (A/B × state):
+Risk table (A/B × state) — v3.3.5 STEP 2 (base risk 1% → 1.25% account):
     | state    | A    | B   |
     |----------|------|-----|
-    | normal   | 1000 | 500 |
-    | caution  |  600 | 300 |
-    | warning  |  700 |   0 |
+    | normal   | 1250 | 625 |
+    | caution  |  750 | 375 |
+    | warning  |  875 |   0 |
     | disabled |    0 |   0 |
 
-Spec: Strategy v3.2 § "Position sizing (FX verze C + Black Swan Cap)".
+Spec: Strategy v3.2 § "Position sizing (FX verze C + Black Swan Cap)";
+      v3.3.5 STEP 2 base risk uplift per 17-kolo adversarial review.
 """
 from __future__ import annotations
 
@@ -32,13 +33,15 @@ SetupType = Literal["A", "B"]
 RiskState = Literal["normal", "caution", "warning", "disabled"]
 
 RISK_TABLE: dict[tuple[SetupType, RiskState], float] = {
-    ("A", "normal"):   1000.0,
-    ("A", "caution"):   600.0,
-    ("A", "warning"):   700.0,
+    # v3.3.5 STEP 2: base risk 1% → 1.25% account, applied to all active entries.
+    # Disabled entries (0.0) remain unchanged — risk-gate kills any sizing.
+    ("A", "normal"):   1250.0,   # was 1000 (v3.3.5 STEP 1 and earlier)
+    ("A", "caution"):   750.0,   # was  600
+    ("A", "warning"):   875.0,   # was  700
     ("A", "disabled"):    0.0,
-    ("B", "normal"):    500.0,
-    ("B", "caution"):   300.0,
-    ("B", "warning"):     0.0,  # B disabled in warning
+    ("B", "normal"):    625.0,   # was  500
+    ("B", "caution"):   375.0,   # was  300
+    ("B", "warning"):     0.0,   # B disabled in warning (unchanged)
     ("B", "disabled"):    0.0,
 }
 

@@ -21,11 +21,11 @@ DAX_PRICE = 24155.0
 class TestComputeLots:
     def test_a_normal_uncapped_below_bsc(self):
         # Wide SL → standard lots small → BSC won't bind
+        # v3.3.5 STEP 2: 1250 / (200 * 1.08) = 5.79 → floor 0.01 = 5.78
         r = compute_lots("A", "normal", sl_points=200, eur_usd_spot=EURUSD)
-        # 1000 / (200 * 1.08) = 4.63 → floor 0.01 = 4.63
-        assert r.lots == pytest.approx(4.63, abs=0.01)
+        assert r.lots == pytest.approx(5.78, abs=0.01)
         assert r.capped_by == "standard"
-        assert r.risk_usd == 1000
+        assert r.risk_usd == 1250
 
     def test_b_normal_half_of_a(self):
         ra = compute_lots("A", "normal", sl_points=100, eur_usd_spot=EURUSD)

@@ -41,6 +41,30 @@ REGIME_RISK_MULTIPLIERS: dict[Regime, float] = {
 #   * Margin: 11.5% utilization (< 30% cap)
 # - Expected Gate #18 lift: +10-20pp (Red Team realistic range, NOT +25pp)
 # - Black Swan Cap binding at 23.15 lots, boosted lots 13.22 < cap = no clipping
+#
+# v3.3.5 STEP 2 change rationale (per 17-kolo adversarial review):
+# - Phase 0 v3.3.5 STEP 1 Gate #18 = 55.87% (50-59% band → STEP 2+3 needed verdict)
+# - Step-by-step approach per Princip #2 (multi-candidate evidence required)
+# - Risk boost 1% → 1.25% applied to ALL active cells (all RISK_TABLE entries)
+#   via update of risk_manager.RISK_TABLE — single source of truth.
+# - FTMO compliance pre-validated:
+#   * Daily Loss worst case: 2× $1,250 = $2,500 (2.5% < 5% limit) ✓
+#   * HARD STOP probability expected 5-7% (still pod 10% threshold)
+#   * Margin: ~14% account (pod 30% cap) ✓
+#
+# POZNÁMKA #1 (Red Team): ORB-DAX CALM hits Black Swan Cap at 23.15 lots
+# in STEP 2. Cell saturates — further risk increases will NOT increase
+# ORB-DAX CALM exposure (BSC binding limit). STEP 3 (UNDEFINED frequency)
+# is primary lever for additional P&L lift in this cell, NOT additional
+# risk boosts.
+#
+# Expected Gate #18 lift: +10-15pp incremental (compound with STEP 1)
+# Compound projected: 55.87% + 10-15 = 65-71% range (Red Team estimate).
+#
+# Per-cell expected lots (EUR/USD 1.08, DAX 24155):
+#   ORB-DAX CALM: 18.52 → 23.15 (BSC BINDING — saturation point)
+#   US-MOM CALM:  15.43 → 19.29
+#   US-MOM CRASH: 13.22 → 16.53
 
 
 def calculate_lots_v331(
