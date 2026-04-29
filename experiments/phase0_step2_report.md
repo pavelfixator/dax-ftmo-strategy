@@ -1,8 +1,9 @@
 # Phase 0 v3.3.5 STEP 2 Report — Base Risk 1.0% → 1.25% (all cells)
 
 **Datum:** 2026-04-29
-**Status:** ✅ SEKCE A + B COMPLETE
+**Status:** ✅ SEKCE A + B + C COMPLETE
 **Final verdict:** 🟡 **STEP 3 NEEDED** (Gate #18 = 61.84 % v 60–69 % band per POZNÁMKA #2)
+**Kritický constraint pro STEP 3:** HARD STOP **9.05 % TIGHT** (0.37 pp margin to 10 % threshold) → STEP 3 musí být **frequency-only**, žádné další risk boosts.
 
 ---
 
