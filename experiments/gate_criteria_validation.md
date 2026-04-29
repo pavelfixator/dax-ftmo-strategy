@@ -13,7 +13,7 @@
 - #4 Sharpe ≥1.0:    **PASS** (value 1.69)
 - #6 Max DD ≤8.0%: **PASS** (value 2.18%)
 - #7 Risk of Ruin <1.0%: **PASS** (value 0.00%)
-- #8 P(HARD STOP) <15.0%: **PASS** (value 0.00%)
+- #8 P(HARD STOP) <10.0%: **PASS** (value 0.00%)
 
 ## Gate #9 walk-forward: **FAIL**
 - 2/21 = 9.5% pass (need 80%)
@@ -31,7 +31,7 @@ Per-cell:
 - us_momentum/CRASH: PF=2.16 WR=52.75% R-mult=1.93 → PASS (OK)
 
 ## Gate #18 Challenge Success Rate (v3.3.4 NEW): **FAIL**
-- success rate: 45.0% (threshold ≥70% PASS, ≥60% WARNING)
+- success rate: 55.9% (threshold ≥70% PASS, ≥60% WARNING)
 
 ## Gates pending separate computations
 - #2 WR aggregate / #3 PF aggregate / #5 Sortino / #11 close framework / #12 swap coverage / #13 BSC audit / #16 ablation positive / #17 classifier accuracy

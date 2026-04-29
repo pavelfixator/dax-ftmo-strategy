@@ -1,0 +1,31 @@
+🏁 **Sekce B complete — Phase 0 v3.3.5 STEP 1 výsledky**
+
+**Verdikt:** 🔴 **NO-GO** (Gate #18 = 55.87 % < 60 % automatic threshold)
+
+**Klíčová čísla:**
+• Gate #18: 44.98 % → **55.87 %** (Δ +10.89 pp; 95 % CI 54.89–56.84 %)
+• HARD STOP probability: **4.07 %** (95 % CI 3.70–4.48 %; threshold <10 %) ✅ POZNÁMKA #1 PASS
+• Mean Challenge P&L: +$4 619 → **+$6 339** (+37 %)
+• Median: +$5 887 (>$5K target) | p5: -$3 283 | p95: +$18 187
+• Within-Challenge max DD: mean -$1 942, p5 -$6 763, p95 +$1 523
+
+**POZNÁMKA #2 — realistic estimate band 55-65 %:**
+55.87 % = **Conservative scenario hit** (+10 pp). 16-kolo adversarial review se ukázalo přesné — žádné "best case 70 %+".
+
+**POZNÁMKA #3 — per-trade vs per-day:**
+• Per-trade: $1K target (1 % risk) konstantní napříč v3.3.4 a v3.3.5
+• Per-day (within-Challenge max DD): mean -$1 942, p5 -$6 763 (těsně pod $7K HS limit)
+
+**Sanity:** 55.87 % ∈ [30 %, 90 %] → žádný halt potřebný.
+
+**Decision tree:** 55.87 % < 60 % → AUTOMATIC NO-GO. STEP 2 redesign nutný (architektonické změny: drop weak cells US-MOM TREND/CALM, loosen UNDEFINED, anebo Phase 1 60-90 day timeline).
+
+**Změny:** sizing_v331 (CRASH 0.5→1.0), gate18 + Gate #8 (HARD STOP <10 %), 12 unit testů `test_gate18_hard_stop.py` (366/366 PASS).
+
+**Artefakty:**
+• `experiments/phase0_step1_report.md` (full breakdown + per-cell analýza + STEP 2 doporučení)
+• `experiments/exp_gate18_challenge_success.md` (raw block bootstrap)
+• `experiments/gate_criteria_validation.md` (gate matrix)
+• Commit: `be27375` (push do origin/main čeká na povolení)
+
+ČEKÁM na "Pokračuj sekce C".
