@@ -155,29 +155,57 @@ def collect_daily_pnls(feed: BarFeed, daily_history, regime_cache,
     return daily_pnl
 
 
+# v3.3.5 STEP 1 POZNÁMKA #1 — HARD STOP threshold (compound DD L2 trigger).
+# Per Strategy v3.3.x compound DD framework: cumulative loss ≤ -$7K = automatic
+# pause. Gate #8 threshold lowered from 0.15 to 0.10 in v3.3.5 STEP 1.
+HARD_STOP_USD = -7_000.0
+
+
 def block_bootstrap(daily_pnl: dict[dt.date, float], n_simulations: int,
                     block_size: int = CHALLENGE_DAYS,
                     profit_target: float = PROFIT_TARGET_USD,
+                    hard_stop_usd: float = HARD_STOP_USD,
                     seed: int = 42) -> dict:
-    """Run N simulated Challenges; return success rate + distribution."""
+    """Run N simulated Challenges.
+
+    Per simulation:
+      - block = pnls[start:start+block_size]   (USD per day, realistic sizing)
+      - cumsum = running cumulative P&L
+      - final = cumsum[-1]                      → success if ≥ profit_target
+      - max_dd = cumsum.min()                   → HARD STOP if ≤ hard_stop_usd
+
+    Returns success_rate + hard_stop_probability + 95 % CI Wilson + distributions.
+    POZNÁMKA #1 (v3.3.5 STEP 1): HARD STOP probability re-validation gate.
+    """
     dates = sorted(daily_pnl.keys())
     pnls = np.array([daily_pnl[d] for d in dates], dtype=float)
     n = len(pnls)
     if n < block_size:
         return {"error": f"insufficient days {n} < block_size {block_size}",
-                "success_rate": 0.0}
+                "success_rate": 0.0, "hard_stop_probability": 0.0}
     n_blocks = n - block_size + 1
     rng = np.random.default_rng(seed)
     final_pnls = np.zeros(n_simulations)
+    max_dds = np.zeros(n_simulations)
     successes = 0
+    hard_stops = 0
     for i in range(n_simulations):
         start = int(rng.integers(0, n_blocks))
         block = pnls[start:start + block_size]
-        final = float(block.sum())
+        cumsum = np.cumsum(block)
+        final = float(cumsum[-1])
+        max_dd = float(cumsum.min())
         final_pnls[i] = final
+        max_dds[i] = max_dd
         if final >= profit_target:
             successes += 1
+        if max_dd <= hard_stop_usd:
+            hard_stops += 1
     rate = successes / n_simulations
+    hs_prob = hard_stops / n_simulations
+    from src.backtest.extended_ablation import wilson_ci
+    succ_lo, succ_hi = wilson_ci(successes, n_simulations)
+    hs_lo, hs_hi = wilson_ci(hard_stops, n_simulations)
     return {
         "n_simulations": n_simulations,
         "block_size": block_size,
@@ -185,6 +213,13 @@ def block_bootstrap(daily_pnl: dict[dt.date, float], n_simulations: int,
         "n_blocks": n_blocks,
         "successes": successes,
         "success_rate": rate,
+        "success_ci_low": succ_lo,
+        "success_ci_high": succ_hi,
+        "hard_stops": hard_stops,
+        "hard_stop_probability": hs_prob,
+        "hard_stop_ci_low": hs_lo,
+        "hard_stop_ci_high": hs_hi,
+        "hard_stop_usd_threshold": hard_stop_usd,
         "profit_target_usd": profit_target,
         "final_pnl_distribution": {
             "mean": float(final_pnls.mean()),
@@ -194,7 +229,14 @@ def block_bootstrap(daily_pnl: dict[dt.date, float], n_simulations: int,
             "p75": float(np.percentile(final_pnls, 75)),
             "p95": float(np.percentile(final_pnls, 95)),
         },
-        "_final_pnls": final_pnls,  # for histogram
+        "max_dd_distribution": {
+            "mean": float(max_dds.mean()),
+            "p5": float(np.percentile(max_dds, 5)),
+            "p50": float(np.median(max_dds)),
+            "p95": float(np.percentile(max_dds, 95)),
+        },
+        "_final_pnls": final_pnls,
+        "_max_dds": max_dds,
     }
 
 
@@ -231,11 +273,16 @@ def write_histogram(final_pnls: np.ndarray, out_path: Path,
         encoding="utf-8")
 
 
-def write_md(stats: dict, verdict: str, out_path: Path) -> None:
+def write_md(stats: dict, verdict: str, out_path: Path,
+              hard_stop_threshold: float = 0.10) -> None:
+    hs_prob = stats.get("hard_stop_probability", 0.0)
+    hs_ok = hs_prob < hard_stop_threshold
+    hs_verdict = "PASS" if hs_ok else "FAIL — STEP 1 NO-GO per POZNAMKA #1"
     lines = [
         "# Gate #18 — Challenge Success Rate (Block Bootstrap)",
         "",
-        f"**Verdict: {verdict}**",
+        f"**Success-rate verdict: {verdict}**",
+        f"**HARD STOP verdict (POZNAMKA #1): {hs_verdict}**",
         "",
         f"## Inputs",
         f"- n_simulations: {stats['n_simulations']:,}",
@@ -243,10 +290,29 @@ def write_md(stats: dict, verdict: str, out_path: Path) -> None:
         f"- n_eligible_days (non-UNDEFINED): {stats['n_eligible_days']:,}",
         f"- n_blocks available: {stats['n_blocks']:,}",
         f"- profit target: ${int(stats['profit_target_usd']):,}",
+        f"- HARD STOP threshold: ${stats.get('hard_stop_usd_threshold', -7000):.0f}",
         "",
-        f"## Result",
-        f"- Successes: {stats['successes']:,}",
-        f"- success_rate: **{stats['success_rate']*100:.2f}%**",
+        f"## Challenge Success",
+        f"- Successes: {stats['successes']:,} / {stats['n_simulations']:,}",
+        f"- success_rate: **{stats['success_rate']*100:.2f}%**  "
+        f"(95% CI Wilson: {stats.get('success_ci_low', 0)*100:.2f}% .. "
+        f"{stats.get('success_ci_high', 0)*100:.2f}%)",
+        "",
+        f"## POZNAMKA #1 — HARD STOP probability (v3.3.5 STEP 1)",
+        f"- HARD STOP triggers: {stats.get('hard_stops', 0):,} / {stats['n_simulations']:,}",
+        f"- **HARD STOP probability: {hs_prob*100:.2f}%**  "
+        f"(95% CI Wilson: {stats.get('hard_stop_ci_low', 0)*100:.2f}% .. "
+        f"{stats.get('hard_stop_ci_high', 0)*100:.2f}%)",
+        f"- Gate #8 threshold v3.3.5 STEP 1: <{hard_stop_threshold*100:.0f}%  "
+        f"→ **{hs_verdict}**",
+        "",
+        f"### Within-Challenge max DD distribution (USD)",
+        f"| stat | value |",
+        f"|---|---:|",
+        f"| mean | ${stats.get('max_dd_distribution', {}).get('mean', 0):+.0f} |",
+        f"| p5   | ${stats.get('max_dd_distribution', {}).get('p5', 0):+.0f} |",
+        f"| p50  | ${stats.get('max_dd_distribution', {}).get('p50', 0):+.0f} |",
+        f"| p95  | ${stats.get('max_dd_distribution', {}).get('p95', 0):+.0f} |",
         "",
         f"## Final P&L distribution (USD)",
         f"| stat | value |",
@@ -258,10 +324,11 @@ def write_md(stats: dict, verdict: str, out_path: Path) -> None:
         f"| p75 | ${stats['final_pnl_distribution']['p75']:+.0f} |",
         f"| p95 | ${stats['final_pnl_distribution']['p95']:+.0f} |",
         "",
-        f"## Acceptance (v3.3.4)",
-        f"- ≥ 70 % → 🟢 Phase 1 PROCEED",
-        f"- 60-70 % → 🟡 USER DECISION",
-        f"- < 60 % → 🔴 NO-GO, return to v3.3.5 redesign",
+        f"## Acceptance",
+        f"- success_rate ≥ 70 % → Phase 1 PROCEED",
+        f"- 60-70 %               → USER DECISION",
+        f"- < 60 %                → NO-GO",
+        f"- HARD STOP probability < 10 % required (POZNAMKA #1, STEP 1 NO-GO if not met)",
         "",
         f"Histogram: `experiments/exp_gate18_histogram.html`",
         "",
@@ -313,6 +380,9 @@ def main() -> int:
     print(f"[gate18] elapsed: {time.time() - t0:.1f}s")
 
     final_pnls = stats.pop("_final_pnls")
+    stats.pop("_max_dds", None)
+    print(f"[gate18] HARD STOP probability: {stats.get('hard_stop_probability', 0)*100:.2f}%  "
+          f"(95% CI: {stats.get('hard_stop_ci_low', 0)*100:.2f}-{stats.get('hard_stop_ci_high', 0)*100:.2f}%)")
     write_histogram(final_pnls, OUT_HTML)
     write_md(stats, verdict, OUT_MD)
     print(f"[gate18] -> {OUT_MD}, {OUT_HTML}")
