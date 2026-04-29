@@ -1,9 +1,10 @@
 # Phase 0 v3.3.5 STEP 1 Report — CRASH Multiplier 0.5 → 1.0
 
 **Datum:** 2026-04-29
-**Verdikt (success rate):** 🔴 **NO-GO** — Gate #18 = 55.87 % (< 60 % automatic NO-GO threshold)
+**Final verdict:** 🟡 **STEP 2 + STEP 3 NEEDED** (per refined decision tree: Gate #18 = 55.87 % je v 50–59 % band)
+**Verdikt (success rate):** Gate #18 = **55.87 %** (Δ +10.89 pp vs v3.3.4 baseline 44.98 %)
 **Verdikt (HARD STOP / POZNÁMKA #1):** ✅ **PASS** — 4.07 % (95 % CI 3.70–4.48 %; threshold <10 %)
-**Realistic estimate band per POZNÁMKA #2:** 55–65 % → **STEP 1 hit dolní hranici (55.87 %)**
+**POZNÁMKA #2 calibration:** Δ +10.89 pp **hit conservative estimate band** (55–65 % realistic range, low-end).
 
 ---
 
@@ -20,14 +21,15 @@ v3.3.5 STEP 1 zavedl **jediný parametr change** vs v3.3.4 baseline: CRASH risk 
 - Sanity check (POZNÁMKA krit. gate): 55.87 % ∈ [30 %, 90 %] → žádný halt vyžadován.
 
 **Decision tree application:**
-- 55.87 % < 60 % → 🔴 **AUTOMATIC NO-GO** per v3.3.4 self-imposed threshold (inherited).
-- HARD STOP 4.07 % < 10 % → POZNÁMKA #1 PASS (independent gate).
+- 55.87 % v **50–59 % band** → 🟡 **STEP 2 + STEP 3 NEEDED** (architektonický redesign).
+- HARD STOP 4.07 % < 10 % → ✅ POZNÁMKA #1 PASS (independent gate).
+- Sanity check 55.87 % ∈ [30 %, 90 %] → žádný halt.
 
-**Závěr:** STEP 1 zlepšil výsledek o **+10.89 pp**, což odpovídá Conservative scenario
-v POZNÁMKA #2 (+10 pp). Strategy edge je real, ale 30-day Challenge target +5 % není
-dosažitelný s 55.87 % spolehlivostí — nutný **STEP 2 redesign** (architektonické změny:
-loosen UNDEFINED rule, drop weak cells, anebo Phase 1 timeline 60-90 days dle FTMO
-konzultace).
+**Závěr:** STEP 1 přinesl **Δ +10.89 pp**, což **hit conservative estimate band** (55–65 %)
+per POZNÁMKA #2. Strategy edge existuje (median +$5 887 > $5K target, mean +$6 339), ale
+55.87 % spolehlivost na 30-day Challenge target je **alone insufficient** pro Phase 1
+PROCEED. STEP 2 architektonický redesign nutný (loosen UNDEFINED, drop weak cells,
+event. Phase 1 60–90 day timeline po FTMO konzultaci) → vrácení Architektovi.
 
 ---
 
@@ -189,43 +191,89 @@ filtru; CALM nyní filtruje více trades než v Phase 0 v3.3.4 raw).
 
 ---
 
-## Decision tree application
+## Decision tree application (v3.3.5 STEP 1 refined)
 
-Per v3.3.4 spec inherited:
-- Gate #18 ≥ 70 % → 🟢 Phase 1 PROCEED
-- 60-70 %         → 🟡 USER DECISION
-- < 60 %          → 🔴 AUTOMATIC NO-GO → v3.3.5 STEP 2 redesign
+**Tree (STEP 1 evaluation):**
+| Gate #18 band | Verdict | Action |
+|---|---|---|
+| ≥ 70 %         | 🟢 PASS                | Phase 1 PROCEED |
+| 60–69 %        | 🟡 USER DECISION       | conditional proceed / minor tuning |
+| **50–59 %**    | 🟡 **STEP 2 + STEP 3** | architectural redesign required (return to Architekt) |
+| 30–49 %        | 🔴 NO-GO               | strategy fundamentally insufficient |
+| < 30 % or > 90 % | 🛑 SANITY HALT       | stop, double-check sizing/regime cache |
 
-Per v3.3.5 STEP 1 OVERRIDE (POZNÁMKA #1):
+**HARD STOP override (POZNÁMKA #1):**
 - HARD STOP probability ≥ 10 % → 🔴 STEP 1 NO-GO bez ohledu na success rate
 
-**Tree application:**
-1. HARD STOP 4.07 % < 10 % → POZNÁMKA #1 PASS, gate neaktivní.
-2. Gate #18 success rate 55.87 % < 60 % → 🔴 **AUTOMATIC NO-GO**.
+**Tree application — current results:**
+1. HARD STOP 4.07 % < 10 % → ✅ POZNÁMKA #1 PASS, override neaktivní.
+2. Sanity check: 55.87 % ∈ [30 %, 90 %] → ✅ no halt.
+3. Gate #18 = 55.87 % spadá do **50–59 % band** → 🟡 **STEP 2 + STEP 3 NEEDED**.
+
+**Interpretace:** STEP 1 single-parameter sizing change přinesl **Δ +10.89 pp**, což hit
+conservative end of POZNÁMKA #2 realistic estimate band (55–65 %). Empirical fakt: STEP 1
+sizing fix je validovaný, ale **alone insufficient** pro Gate #18 PASS. Strategy edge
+exists (mean +$6 339, median +$5 887 > $5K target), ale variance + CRASH-dependent
+upside vyžaduje architektonický redesign (STEP 2) + extended validation (STEP 3) než
+re-run Gate #18.
 
 ---
 
-## Doporučení pro Pavla — STEP 2 hypotézy
+## STEP 2 prep — TODO list (documentation only, žádná implementace)
 
 55.87 % vs 70 % target = gap **-14.13 pp**. STEP 2 musí adresovat **architektonické**
-limity, ne ladění multiplikátorů:
+limity, ne ladění multiplikátorů. Tento seznam je **podklad pro Architekta**, ne
+implementační backlog:
 
-1. **UNDEFINED kanibalizace (65 %)** — strategy nemůže obchodovat 2/3 dní; loosen
-   2/3 consensus rule v některých kombinacích, anebo přidat 4. signál pro classifier.
+### Hypotéza A — UNDEFINED kanibalizace (highest priority)
+- **Diagnóza:** 65 % dnů je UNDEFINED → strategy nemůže obchodovat 2/3 ze 2 888 dnů.
+- **Možnosti k posouzení:**
+  - A1: Loosen 2/3 consensus rule na 1/3 v některých regime kombinacích (Pavel v3.3.2.1
+    to akceptoval, ale Gate #18 ukazuje že to limit dosahuje).
+  - A2: Dodat 4. signál do classifier (volume regime, intraday pattern) → snížit
+    UNDEFINED na ~30–40 % per backtest projection.
+- **Akceptační kritéria pro STEP 2 design:** projection že UNDEFINED rate spadne na
+  ≤ 50 % bez zhoršení per-cell PF.
 
-2. **Drop weak cells uniform** — US-MOM TREND (PF 1.16) + US-MOM CALM (PF 0.96) selhávají
-   Gate #15 a táhnou aggregate down. Run pouze ORB CALM + US-MOM CRASH (2 cells)?
+### Hypotéza B — Drop weak cells (Gate #15 violation root cause)
+- **Diagnóza:** US-MOM TREND (PF 1.16) + US-MOM CALM (PF 0.96) selhávají Gate #15
+  (PF<1.5). Tyto cells přidávají variance bez positive expectancy.
+- **Možnosti:**
+  - B1: Drop US-MOM TREND a US-MOM CALM, jet pouze 2 active cells: ORB CALM + US-MOM CRASH.
+  - B2: Reformulovat F5/F1 filter pro TREND/CALM (pokus selhal v 16-kolo adversarial,
+    ale s STEP 1 sizing daty může být prostor).
+- **Risk:** dropping cells redukuje trade flow → větší dependence na CRASH frequency.
 
-3. **Phase 1 timeline 60-90 days** — FTMO konzultace; CRASH events jsou ~3 % dnů
-   (89/2888), 30-day okno typicky obsahuje 1-2 CRASH dny. Delší timeline → větší
-   CRASH exposure → větší upside.
+### Hypotéza C — Phase 1 timeline extension (FTMO konzultace nutná)
+- **Diagnóza:** CRASH events ~3 % dnů (89/2 888); 30-day Challenge má typicky 1–2 CRASH
+  dny, někdy 0. Edge je CRASH-dependent, takže krátký časový okno limituje exposure.
+- **Možnosti:**
+  - C1: Konzultovat FTMO whether 60–90 day Challenge timeline je available (Phase 1 je
+    typicky 30 days, ale různé FTMO programs).
+  - C2: Pokud ne — proceed s 30 days a accept higher variance → potřeba většího
+    margin of safety v Gate #18 thresholdu.
 
-4. **Add 5. setup** — intraday range expansion / momentum break pro UNDEFINED dny.
+### Hypotéza D — 5th setup (UNDEFINED day capture)
+- **Diagnóza:** UNDEFINED dnů máme 1 830, ale strategy je tichá. I 1 % WR/PF setup by
+  zvýšil aggregate trade flow.
+- **Možnosti:**
+  - D1: Intraday range expansion / momentum break setup pro UNDEFINED days.
+  - D2: Pre-session opening range strategy (08:00–09:00 CET pre-Xetra, regime-agnostic).
+
+### STEP 3 prep (validation framework)
+Po STEP 2 redesign nutná re-validace:
+- Re-run Gate #18 block bootstrap s nový active cell set + multiplier table.
+- Re-run extended ablation Sekce 5 pro nové cell composition.
+- Re-validate Gate #15 uniform criterion na všechny aktivní cells.
+- Re-run MACD OOS validation pokud reformulujeme filter sets (Hypotéza B2).
+- Re-run TREND analytical stress test pokud TREND zůstane active.
 
 ---
 
-**Final verdict:** 🔴 **Phase 0 STEP 1 NO-GO** per Gate #18 = 55.87 % < 60 % automatic
-threshold. POZNÁMKA #1 HARD STOP gate PASS (4.07 %). STEP 1 prokázal Conservative
-estimate band hit (+10.89 pp) — sizing fix funguje, ale nestačí. **Vyžadováno STEP 2**
-redesign před re-validací Gate #18.
+**Final verdict:** 🟡 **Phase 0 STEP 1 = STEP 2 + STEP 3 NEEDED** per Gate #18 = 55.87 %
+v 50–59 % band. POZNÁMKA #1 HARD STOP gate PASS (4.07 %). Δ +10.89 pp **hit conservative
+estimate band** (55–65 %), confirming POZNÁMKA #2 calibration. STEP 1 sizing fix je
+empirically validovaný **dílčí improvement**, ale **alone insufficient** pro Phase 1
+PROCEED. **Vrácení Architektovi** pro STEP 2 architektonický redesign per TODO list
+výše. Žádná STEP 2 implementace bez Pavlova/Architektova schválení.
 
