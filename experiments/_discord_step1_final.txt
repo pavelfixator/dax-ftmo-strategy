@@ -1,0 +1,41 @@
+🟡 **Phase 0 v3.3.5 STEP 1 FINAL — STEP 2 + STEP 3 NEEDED**
+
+**Dual verdict:**
+• Gate #18 success rate: **55.87 %** (95 % CI 54.89–56.84 %) v **50–59 % band** → 🟡 STEP 2 + STEP 3 needed
+• HARD STOP probability: **4.07 %** (95 % CI 3.70–4.48 %; threshold <10 %) → ✅ **POZNÁMKA #1 PASS**
+
+**Empirický fakt (POZNÁMKA #2):** Δ +10.89 pp delta **hit conservative estimate band** (55–65 % realistic range, low-end). 16-kolo adversarial calibration validovaná.
+
+**Distribuce výsledků (10 K block bootstrap, 30-day Challenge):**
+• Mean Challenge P&L: +$6 339 (vs v3.3.4 +$4 619, +37 %)
+• Median: +$5 887 (>$5K target — medián Challenge úspěšný)
+• p5: -$3 283 | p25: +$1 766 | p75: +$10 523 | p95: +$18 187
+• Within-Challenge max DD: mean -$1 942, p5 -$6 763, p95 +$1 523
+
+**Per-day vs per-trade (POZNÁMKA #3):**
+• Per-trade: $1K target loss konstantní (sizing formula respektuje 1 % risk)
+• Per-day worst case: p5 max DD -$6 763 (těsně pod $7K HS limit; 4.07 % triggers)
+
+**Sanity check:** 55.87 % ∈ [30 %, 90 %] → no halt.
+
+**Decision tree band-based:**
+• ≥70 % PASS / 60–69 % USER DECISION / **50–59 % STEP 2 + STEP 3** / 30–49 % NO-GO / <30 % nebo >90 % HALT
+
+**Doporučení:** vrácení Architektovi pro STEP 2 architektonický redesign.
+
+STEP 2 prep TODO list (`experiments/step2_prep_todo.md`):
+• H-A: UNDEFINED reduction (63.4 % dnů) — loosen 2/3 → 1/3 nebo 4. classifier signál
+• H-B: Drop weak cells US-MOM TREND (PF 1.16) + US-MOM CALM (PF 0.96) — Gate #15 fail 2/4
+• H-C: Phase 1 60–90 day timeline (FTMO konzultace nutná)
+• H-D: 5. setup pro UNDEFINED day capture (intraday range / pre-Xetra ORB)
+
+**❌ NE-AUTORIZOVANÉ:** STEP 2 implementace, Phase 1 LIVE, real account changes.
+
+**Artefakty (push hotový do origin/main):**
+• `experiments/phase0_step1_report.md` (full breakdown)
+• `experiments/step2_prep_todo.md` (Architekt vstup)
+• `experiments/exp_gate18_challenge_success.md` (raw bootstrap)
+• `experiments/gate_criteria_validation.md` (18-gate matrix)
+• Commits: `be27375`, `cf21334`, `ea9f81d`
+
+**STOP — čekám rozhodnutí od Pavla** (vrácení Architektovi vs alternative path).
