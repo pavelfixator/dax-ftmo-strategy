@@ -1,0 +1,49 @@
+🎯 v3.3.5 STEP 2 RE-RUN COMPLETE — Sekce A/B/C/D done
+
+EMPIRICAL RESULTS (10K block bootstrap, 30-day Challenge):
+• Gate #18 success rate: 61.84% (95% CI 60.88-62.79%)
+  - Δ from STEP 1: +5.97 pp
+  - Compound from v3.3.4: +16.86 pp (44.98 → 55.87 → 61.84)
+• HARD STOP probability: 9.05% (95% CI 8.50-9.63%)
+  - Δ from STEP 1: +4.98 pp
+  - Threshold <10% → PASS but TIGHT (0.37 pp margin)
+• Mean Challenge P&L: +$7 923 (vs $6 339 STEP 1, vs $4 619 v3.3.4)
+• Median: +$7 359 | p5: -$4 103 | p95: +$22 733
+• Within-Challenge max DD p5: -$8 453 (-$1 690 vs STEP 1)
+
+GATE VALIDATION:
+• Gate #6 Max DD (MC): -2.18% < 8% PASS
+• Gate #8 HARD STOP (MC): 0.00% < 10% PASS (+ block bootstrap 9.05%)
+• Gate #15 per-cell: ORB-DAX CALM PASS, US-MOM CRASH PASS, US-MOM CALM FAIL, US-MOM TREND DISABLED
+• Gate #18: 61.84% (threshold ≥70%) — 60-69% band
+
+GRANULAR DECISION (POZNÁMKA #2 5-band):
+• Band: 60-69% → STEP 1+2 progress, sub-threshold
+• Verdikt: STEP 3 NEEDED
+• Next action: UNDEFINED loosening + separate ablation re-run (~8h compute)
+
+BSC FUTURE CONSTRAINT (POZNÁMKA #1):
+• ORB-DAX CALM cap binding confirmed empirically (23.15 lots saturation)
+• STEP 3 (UNDEFINED frequency) je primary remaining lever
+• Další risk boost NEPOMŮŽE této cell (cap binding limits)
+
+KRITICKÝ STEP 3 CONSTRAINT:
+HARD STOP scaling empiricky NON-LINEAR (×2.22 pro ×1.25 risk uplift).
+- Naive STEP 3 risk extrapolation: 9.05 × 2.22 = 20% → automatic NO-GO
+- STEP 3 MUSÍ být frequency-only, ZERO risk boosts
+- Per-trade exposure musí zůstat na STEP 2 levels
+
+ARTIFACTS:
+- experiments/phase0_step2_report.md (9 sekcí)
+- experiments/step3_prep_todo.md (Architekt + Red Team brief)
+- Commit: 36908ec (push to origin/main)
+
+Pavel rozhoduje další krok. ČEKÁM na pokyn.
+
+NE-AUTORIZOVANÉ:
+❌ STEP 3 implementace (Pavel + Architekt + Red Team rozhodují)
+❌ Phase 1 LIVE deployment
+❌ Real account changes
+❌ Risk boosts (HARD STOP TIGHT, žádné výjimky)
+
+KVALITA > rychlost, žádný tlak.
