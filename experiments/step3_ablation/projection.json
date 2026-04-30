@@ -1,0 +1,132 @@
+{
+  "projection": {
+    "n_simulations": 1000,
+    "block_size": 30,
+    "n_eligible_days": 1763,
+    "n_blocks": 1734,
+    "successes": 352,
+    "success_rate": 0.352,
+    "success_ci_low": 0.32301658754166684,
+    "success_ci_high": 0.3821161329700574,
+    "hard_stops": 363,
+    "hard_stop_probability": 0.363,
+    "hard_stop_ci_low": 0.3337729626449257,
+    "hard_stop_ci_high": 0.39327556918011636,
+    "hard_stop_usd_threshold": -7000.0,
+    "profit_target_usd": 5000.0,
+    "final_pnl_distribution": {
+      "mean": 893.7357922620931,
+      "median": -160.78131241215505,
+      "p5": -11957.974514921192,
+      "p25": -6033.776817106764,
+      "p75": 7720.412992412472,
+      "p95": 16082.262458059862
+    },
+    "max_dd_distribution": {
+      "mean": -5573.6674350990415,
+      "p5": -14655.074039382449,
+      "p50": -4909.045610333629,
+      "p95": 866.3562499999899
+    }
+  },
+  "hypothesis": {
+    "low_trade_count_threshold": 5,
+    "high_trade_count_threshold": 10,
+    "low_trade_n": 0,
+    "low_trade_hs_rate": NaN,
+    "high_trade_n": 1000,
+    "high_trade_hs_rate": 0.363,
+    "crash_proxy_n": 20,
+    "crash_hs_rate": 0.15,
+    "no_crash_n": 980,
+    "no_crash_hs_rate": 0.3673469387755102,
+    "verdict": "inconclusive",
+    "verdict_text": "Inconclusive: insufficient data in low/high-trade buckets"
+  },
+  "regime_distribution": {
+    "2_of_3": {
+      "TREND": 26.177285318559555,
+      "CALM": 7.375346260387812,
+      "CRASH": 3.081717451523546,
+      "UNDEFINED": 63.365650969529085,
+      "n": 2888
+    },
+    "1_of_3": {
+      "TREND": 39.646814404432135,
+      "CALM": 18.317174515235457,
+      "CRASH": 3.081717451523546,
+      "UNDEFINED": 38.95429362880887,
+      "n": 2888
+    }
+  },
+  "per_cell": {
+    "2_of_3": {
+      "orb_dax/CALM": {
+        "trade_count": 122,
+        "PF": 1.7608653075347331,
+        "WR": 0.3442622950819672,
+        "expectancy_pts": 18.84356893736224,
+        "max_dd_pts": -587.1777705077402,
+        "sharpe": 0.22743756885222025
+      },
+      "us_momentum/TREND": {
+        "trade_count": 569,
+        "PF": 1.1564045053191563,
+        "WR": 0.45518453427065025,
+        "expectancy_pts": 3.284964403025567,
+        "max_dd_pts": -564.7495862279666,
+        "sharpe": 0.049846683481754285
+      },
+      "us_momentum/CALM": {
+        "trade_count": 232,
+        "PF": 1.3712521534569209,
+        "WR": 0.5646551724137931,
+        "expectancy_pts": 6.497555408245121,
+        "max_dd_pts": -323.8159422187073,
+        "sharpe": 0.1376662329490371
+      },
+      "us_momentum/CRASH": {
+        "trade_count": 182,
+        "PF": 2.158599834668521,
+        "WR": 0.5274725274725275,
+        "expectancy_pts": 44.81747783955522,
+        "max_dd_pts": -4122.841851604928,
+        "sharpe": 0.28069798272889296
+      }
+    },
+    "1_of_3": {
+      "orb_dax/CALM": {
+        "trade_count": 333,
+        "PF": 0.901413795588728,
+        "WR": 0.24024024024024024,
+        "expectancy_pts": -3.0320884210233383,
+        "max_dd_pts": -1740.3399997126799,
+        "sharpe": -0.04282444996035859
+      },
+      "us_momentum/TREND": {
+        "trade_count": 832,
+        "PF": 0.8417675813979122,
+        "WR": 0.4074519230769231,
+        "expectancy_pts": -3.897047774656917,
+        "max_dd_pts": -4489.718479513678,
+        "sharpe": -0.06258086202573528
+      },
+      "us_momentum/CALM": {
+        "trade_count": 570,
+        "PF": 0.9952135647413161,
+        "WR": 0.45263157894736844,
+        "expectancy_pts": -0.1094166642829773,
+        "max_dd_pts": -895.2337994491882,
+        "sharpe": -0.002049305039228505
+      },
+      "us_momentum/CRASH": {
+        "trade_count": 182,
+        "PF": 2.158599834668521,
+        "WR": 0.5274725274725275,
+        "expectancy_pts": 44.81747783955522,
+        "max_dd_pts": -4122.841851604928,
+        "sharpe": 0.28069798272889296
+      }
+    }
+  }
+}
