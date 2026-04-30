@@ -1,0 +1,48 @@
+🚨 v3.3.5 STEP 3 PREEMPTED — STRICT GATE FAIL
+
+3 sequential parameter levers exhausted definitively.
+
+Compound trajectory:
+- v3.3.4 → STEP 2: +16.86 pp (44.98 → 61.84%) ✓
+- STEP 3 ablation: -26.64 pp regression (61.84 → 35.20% projected) ✗
+- HARD STOP: 9.05% → 36.30% (×4 nárůst, 3.6× over threshold)
+
+FAILED CRITERIA (3/6):
+❌ #1 Gate #18 lift ≥+8pp: -26.64 pp (massive regression)
+❌ #2 HARD STOP <10%: 36.30% (3.6× over)
+❌ #3 Per-cell PF ≥1.4: ORB-DAX CALM 0.90, US-MOM CALM 1.00
+
+PASSED CRITERIA (3/6):
+✅ #4 UNDEFINED 25-45%: 39.0%
+✅ #5 Trade ↑≥50% (eligible): +173%, +146%
+✅ #6 Hypothesis docs+verdict: inconclusive (clear)
+
+CRITICAL EMPIRICAL INSIGHT:
+- Frequency lift mechanically WORKED (+173%, +146% trade counts)
+- BUT classification noise destroyed edge (PF -27 až -49%)
+- Princip #9 validated v opačném směru
+- Frequency-only constraint INSUFFICIENT when quality depends on classification accuracy
+
+PARAMETER TUNING STATUS — POZNÁMKA #3 update:
+- "Parameter tuning exhausted" je now LITERAL, ne just practical
+- 3 levers tested empirically (CRASH mult, base risk, frequency)
+- Last lever (frequency) made things WORSE
+- Theoretical levers (filter restructure, alt SL/TP) have structural costs (~12h compute + adversarial cycle each)
+
+VOLBA D OPTIONS (Pavel rozhoduje):
+a) Multi-instrument diversification (US100, US30, EUR/USD) — 4-6 týdnů scope
+b) Non-CRASH edge re-design (alternative setups) — 6-8 týdnů scope
+c) Alternative timeframes (15m, 30m setups) — 3-4 týdny scope
+d) Accept strategy not viable for FTMO 100K Challenge horizon
+
+Compute saved: ~3h (Sekce D combined re-run skipped per pre-empt logic)
+
+Validated principles: All 9 principles (#1-#9) are production-ready output of v3.3.5 cycle. Future strategy designs inherit directly.
+
+REPORT: experiments/phase0_step3_final.md (7 sekcí)
+ABLATION: experiments/step3_ablation/ (5 artifacts)
+COMMIT: 3f112d0 (push to origin/main)
+
+Pavel decides next step. NO Volba D implementace bez explicit Pavel + Architekt rozhodnutí.
+
+ČEKÁM na pokyn.
